@@ -15,7 +15,7 @@ func cat(line IObj, params ...IObj) IObj{
     return line
 }
 
-func extract(line IObj, params ...IObj) IObj{
+func cut(line IObj, params ...IObj) IObj{
     data := line.(string)
     idxs := params[0].([]IObj)[0].([]string)
     arr := strings.Split(data, "\t")
@@ -34,7 +34,7 @@ func Run(){
 
     opts := map[string] IProcessLine{}
     opts["cat"] = cat
-    opts["extract"] = extract
+    opts["cut"] = cut
 
     Work(opts[opt], 5, 10, params)
 }
