@@ -5,9 +5,11 @@
 package main 
 
 import (
-	"os"
+	"fmt"
+    "os"
 	"strings"
     "strconv"
+    "crypto/sha256"
 )
 
 
@@ -28,6 +30,23 @@ func cut(line IObj, params ...IObj) IObj{
     return strings.Join(vec, "\t") 
 }
 
+func sign(line IObj, params ...IObj) IObj{
+    data := line.(string)
+    idxs := params[0].([]IObj)[0].([]string)
+    arr := strings.Split(data, "\t")
+
+    idx, _ := strconv.Atoi(idxs[0])
+    sign := ""
+    if idx == -1 {
+        sign = fmt.Sprintf("%x", sha256.Sum256([]byte(data)))
+    } else {
+        sign = fmt.Sprintf("%x", sha256.Sum256([]byte(arr[idx])))
+    }
+    arr = append(arr, sign) 
+
+    return strings.Join(arr, "\t") 
+}
+
 func Run(){
     opt := os.Args[1]
     params := os.Args[2: ]
@@ -35,6 +54,7 @@ func Run(){
     opts := map[string] IProcessLine{}
     opts["cat"] = cat
     opts["cut"] = cut
+    opts["sign"] = sign 
 
     Work(opts[opt], 5, 10, params)
 }
