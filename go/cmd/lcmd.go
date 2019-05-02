@@ -56,9 +56,6 @@ func Run(){
     opts["cut"] = cut
     opts["sign"] = sign 
 
-    Work(opts[opt], 5, 10, params)
+    Work(opts[opt], 5, 10, 5, params)
 }
 
-func main(){
-    Run()
-}

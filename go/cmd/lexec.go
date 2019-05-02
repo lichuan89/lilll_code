@@ -17,27 +17,39 @@ type IObj interface{}
 type IChannel chan interface{}
 type IProcessLine func(line IObj, params ...IObj) IObj
 
-func stdin_2_queues(in IChannel, done chan int) {
+func stdin_2_queues(in IChannel, done chan int, batch_num int) {
 	f := bufio.NewReader(os.Stdin)
     i := 0
+    arr := []string{}
 	for {
 		line, err := f.ReadString('\n')
 		if err == io.EOF {
 			break
 		}
 		line = strings.Replace(line, "\n", "", -1)
-        in <- line
+        arr = append(arr, line)
+        if len(arr) >= batch_num{
+            in <- arr
+            arr = []string{} 
+        }
         i += 1
 	}
+    if len(arr) > 0 {
+        in <- arr 
+    }
     done <- i 
 }
 
 
 func queues_2_worker(in IChannel, out IChannel, process_line IProcessLine, params ...IObj){
     for {
-        line := (<-in).(string)
-        data := process_line(line, params...)
-        out <- data
+        lines := (<-in).([]string)
+        outputs := []IObj {}
+        for _, line := range(lines){
+            data := process_line(line, params...)
+            outputs = append(outputs, data)
+        }
+        out <- outputs
     }
 }
 
@@ -56,9 +68,11 @@ func queue_2_stdout(out IChannel, done chan int) {
                     continue
                 } 
             case msg := <- out:
-                line := msg.(string) 
-                fmt.Println(line)
-                i += 1
+                lines := msg.([]IObj)
+                for _, line := range(lines){
+                    fmt.Println(line.(string))
+                    i += 1
+                }
         }
         if finish_n == i{
             break
@@ -68,12 +82,12 @@ func queue_2_stdout(out IChannel, done chan int) {
 
 
 
-func Work(process_line IProcessLine, worker_num int, queue_len int, params ...IObj) {
+func Work(process_line IProcessLine, worker_num int, queue_len int, batch_num int, params ...IObj) {
     in := make(IChannel, queue_len)
     out := make(IChannel, queue_len)
     done := make(chan int)
     // 将输入流一行一行插入通道
-    go stdin_2_queues(in, done)
+    go stdin_2_queues(in, done, batch_num)
     // 从in通道取数据,处理完后放入out通道, 输入和输出的行数必须一致
     for i := 0; i<= worker_num; i++ {
         go queues_2_worker(in, out, process_line, params)
@@ -99,6 +113,6 @@ func test(){
     }
     // 定义字段调整后的顺序
     params := []int{2, 0}
-    // 5个线程、缓冲10个数据的通道
-    Work(extract, 5, 10, params) 
+    // 5个线程、50个元素的队列、每个元素打包100行数据
+    Work(extract, 5, 50, 100, params) 
 }
