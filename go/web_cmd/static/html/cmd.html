@@ -1,53 +1,62 @@
 <!DOCTYPE html>
+<!-- 
+// note: ajax实现的微服务，发送请求的命令和参数，接收结果
+// author: lichuan89@126.com
+// date:   2019/01/01
+-->
 <script>
-    window.onload = main;
-
-    function main() {
-        var oBtn = document.getElementById('btn1');
-        oBtn.onclick = OnButton;
-    }
-
     String.prototype.trim=function(){
 　　    return this.replace(/(^\s*)|(\s*$)/g, "");
 　　 }
 
+    window.onload = main;
+
+    function main() {
+        var oBtn = document.getElementById("ask_btn");
+        oBtn.onclick = OnButton;
+    }
+
+    // ajax: 无需重新加载页面, 异步请求服务器数据(HTTP)请求, 并局部更新网页。
+    // 呈现的效果是局部刷新，不影响用户操作。
     function OnButton(){
-        var xhr = new XMLHttpRequest();
-        xhr.open("post", '/ajax', true);
-        xhr.setRequestHeader("Content-Type","application/json");
-        var inputs = document.getElementById('inputs').value;
-        var arr = inputs.split("\n")
+        // 从html元素中获取请求内容
+        var input_area = document.getElementById("input_area").value;
+        var arr = input_area.split("\n")
         var k = arr[0]
         arr.splice(0, 1)
         var v = arr.join("\n") 
+
+        // 局部请求http
+        var xhr = new XMLHttpRequest();
+        xhr.open("post", "/ajax", true);
+        xhr.setRequestHeader("Content-Type","application/json");
         xhr.send(k.trim() + "\x01" + v);
+
+        // 接收响应并呈现到页面上
         xhr.onreadystatechange = function () {
             if (xhr.readyState == 4) { // 读取完成
                 if (xhr.status == 200) {
                     text = xhr.responseText;
-                    var oTxt = document.getElementById('outputs');
+                    var oTxt = document.getElementById("output_area");
                     oTxt.value = text;
                     var oDiv = document.getElementById("output_html");
                     oDiv.innerHTML="<p>" + text + "</p>";
-
                 }
             }
         }
     }
-
 </script>
 
 <html>
 <head>
     <meta charset="utf-8" />
     <title>命令行微服务</title>
-
 </head>
 <body>
     <div>
-        <textarea id="inputs" rows="10" cols="60">输入命令</textarea>
-        <input id="btn1" type="button" value=">>" />
-        <textarea id="outputs" rows="10" cols="100">输出结果</textarea>
+        <textarea id="input_area" rows="10" cols="60">输入命令</textarea>
+        <input id="ask_btn" type="button" value=">>" />
+        <textarea id="output_area" rows="10" cols="100">输出结果</textarea>
     </div>
     <div id="output_html">
         

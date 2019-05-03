@@ -1,3 +1,7 @@
+// note: 微服务，接收请求的命令和参数，返回结果 
+// author: lichuan89@126.com
+// date:   2019/01/01
+
 package main
 
 import (
@@ -15,7 +19,6 @@ import (
 const (
     IP string = "localhost"
     HTTP_PORT  string = "8000"
-    HTTPS_PORT string = "1234"
 )
 
 func init() {
