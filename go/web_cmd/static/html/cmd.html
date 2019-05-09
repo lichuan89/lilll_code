@@ -12,11 +12,12 @@
     window.onload = main;
 
     function main() {
+        // 为按钮添加点击事件
         var oBtn = document.getElementById("ask_btn");
         oBtn.onclick = OnButton;
     }
 
-    // ajax: 无需重新加载页面, 异步请求服务器数据(HTTP)请求, 并局部更新网页。
+    // ajax: 无需重新加载页面, 异步请求服务器(HTTP)获取数据来, 并局部更新网页。
     // 呈现的效果是局部刷新，不影响用户操作。
     function OnButton(){
         // 从html元素中获取请求内容
@@ -32,7 +33,7 @@
         xhr.setRequestHeader("Content-Type","application/json");
         xhr.send(k.trim() + "\x01" + v);
 
-        // 接收响应并呈现到页面上
+        // 接收响应并呈现到页面输出框里
         xhr.onreadystatechange = function () {
             if (xhr.readyState == 4) { // 读取完成
                 if (xhr.status == 200) {
@@ -40,6 +41,7 @@
                     var oTxt = document.getElementById("output_area");
                     oTxt.value = text;
                     var oDiv = document.getElementById("output_html");
+                    text = text.replace(/\n/g, "<br>")
                     oDiv.innerHTML="<p>" + text + "</p>";
                 }
             }

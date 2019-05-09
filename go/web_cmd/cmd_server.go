@@ -84,7 +84,7 @@ func OnAjax(res http.ResponseWriter, req *http.Request) {
     if len(arr) >= 2{ 
         args = arr[1] 
     }
-    fmt.Fprintf(res, "## 收到指令:[%s][%s]\n\n", cmd, args)
+    fmt.Fprintf(res, "## 收到指令:\n[%s][%s]\n\n", cmd, args)
     ret, _ := exec_shell("/bin/bash cmd.sh '" + cmd + "' '" + args + "'")
-    fmt.Fprintf(res, "返回结果:[%s]\n\n", ret)
+    fmt.Fprintf(res, "## 返回结果:\n[%s]\n\n", ret)
 }
