@@ -1,1 +1,0 @@
-cp ../../python/common/*py ./
