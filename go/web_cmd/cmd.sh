@@ -5,9 +5,10 @@
 
 
 cmd="$1"
-param="$2"
+output_fpath="$2"
 
-if [[ $cmd == "cat" ]]; then
-    echo "[$param]"
-fi
+cmd=$( echo "$cmd" | awk -F"|" '{for(i=1;i<=NF;i++) s = s "python process_line.py "$i" | ";}END{s = s" cat";  print s}')
 
+echo "$cmd > $output_fpath" > $output_fpath.sh
+/bin/bash $output_fpath.sh
+#python process_line.py "$cmd" > $output_fpath

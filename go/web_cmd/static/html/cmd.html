@@ -4,10 +4,159 @@
 // author: lichuan89@126.com
 // date:   2019/01/01
 -->
+<!-- <script type="text/javascript" src="http://localhost:8000/static/js/table.js"/> -->
+<script src="https://echarts.baidu.com/dist/echarts.min.js"></script>
+<script type="text/javascript">
+
+        function str_2_arr(str) {
+            var arr = []
+            var lines = str.split("\n")
+            for(var i = 0; i < lines.length; i++) {
+                if (lines[i] == "") {
+                    continue
+                }
+                var cols = lines[i].split("\t")
+                arr[i] = cols 
+            }
+            return arr
+        }
+
+        function set_chart_option(data){
+            var title = data[0][0]
+            var len = data[0].length
+            var x =data[0].splice(1, len)
+            var tag = []
+            var ys = []
+            for (var i = 1; i < data.length; i++) {
+                tag[i - 1] = data[i][0]
+                ys[i - 1] = {
+                        name: data[i][0], 
+                        type:'line',
+                        smooth:true,
+                        itemStyle: {normal: {areaStyle: {type: 'default'}}},
+                        data:data[i].splice(1, len)
+                    }
+            }
+    
+            // 指定图表的配置项和数据
+            var option = {
+                "title" : {
+                    text: title, 
+                    //subtext: '纯属虚构'
+                },
+                tooltip : {
+                    trigger: 'axis'
+                },
+                legend: {
+                    data: tag, 
+                },
+                toolbox: {
+                    show : true,
+                    feature : {
+                        mark : {show: true},
+                        dataView : {show: true, readOnly: false},
+                        magicType : {show: true, type: ['line', 'bar', 'stack', 'tiled']},
+                        restore : {show: true},
+                        saveAsImage : {show: true}
+                    }
+                },
+                calculable : true,
+                xAxis : [
+                    {
+                        type : 'category',
+                        boundaryGap : false,
+                        data : x,
+                    }
+                ],
+                yAxis : [
+                    {
+                        type : 'value'
+                    }
+                ],
+                series : ys
+            };
+            return option; 
+        }
+        function show_chart(arg, domid){
+            // 基于准备好的dom，初始化echarts实例
+            var myChart = echarts.init(document.getElementById(domid));
+
+            // 使用刚指定的配置项和数据显示图表。
+            console.log(arg)
+            myChart.setOption(arg);
+        }
+
+        function str_2_chart(str, domid){
+            //var str = "某楼盘销售\t周一\t周二\t周三\n意向\t1320\t1132\t601\n预购\t30\t182\t434\n成交\t10\t12\t21"
+            var data = str_2_arr(str)
+            var option = set_chart_option(data)
+            show_chart(option, domid)
+        } 
+</script>
 <script>
+
+    // String函数
     String.prototype.trim=function(){
 　　    return this.replace(/(^\s*)|(\s*$)/g, "");
 　　 }
+
+    String.prototype['format'] = function () {
+        const e = arguments;
+        return !!this && this.replace(/\{(\d+)\}/g, function (t, r) {
+            return e[r] ? e[r] : t;
+        });
+    }
+
+
+    // ajax: 无需重新加载页面, 异步请求服务器(HTTP)获取数据来, 并局部更新网页。
+    // 呈现的效果是局部刷新，不影响用户操作。
+    function ajax_request(url, req_data, callback) {
+        console.log("ajax request. url:%s, req:%s", url, req_data)
+        // 局部请求http
+        var xhr = new XMLHttpRequest();
+        xhr.open("post", url, true);
+        xhr.setRequestHeader("Content-Type","application/json");
+        xhr.send(req_data)
+        xhr.onreadystatechange = function () {
+            if (xhr.readyState == 4) { // 读取完成
+                if (xhr.status == 200) {
+                    console.log("ajax response. url:%s, req:%s, res:%s", url, req_data, xhr.responseText)
+                    callback(url, req_data, xhr.responseText)
+                }
+            }
+        }
+    }
+
+    function show_output(url, req_data, res_data) {
+        var oTxt = document.getElementById("output_area");
+        oTxt.value = res_data
+ 
+        var oDiv = document.getElementById("output_html");
+        var arr = res_data.split("\n")
+        var input_url = arr[0]
+        var output_url = arr[1]
+        var context = arr.slice(2).join("\n")
+        var html = '<a href="' + input_url + '" target="_blank">输入链接</a>'
+        html += ' --> '
+        html += '<a href="' + output_url + '" target="_blank">输出链接</a><br>'
+        if (req_data.split("\n")[0].indexOf("print_html_chart") == -1) {
+            context = context.replace(/\n/g, "<br>")
+            html += context
+            oDiv.innerHTML= html;
+        } else {
+            str_2_chart(context, "output_html")
+        }
+
+    }
+
+    function OnButton(){
+        // 从html元素中获取请求内容
+        var input = document.getElementById("input_area").value;
+        var response = ajax_request("/ajax", input, show_output)
+    }
+
+</script>
+<script>
 
     window.onload = main;
 
@@ -17,37 +166,34 @@
         oBtn.onclick = OnButton;
     }
 
-    // ajax: 无需重新加载页面, 异步请求服务器(HTTP)获取数据来, 并局部更新网页。
-    // 呈现的效果是局部刷新，不影响用户操作。
-    function OnButton(){
-        // 从html元素中获取请求内容
-        var input_area = document.getElementById("input_area").value;
-        var arr = input_area.split("\n")
-        var k = arr[0]
-        arr.splice(0, 1)
-        var v = arr.join("\n") 
-
-        // 局部请求http
-        var xhr = new XMLHttpRequest();
-        xhr.open("post", "/ajax", true);
-        xhr.setRequestHeader("Content-Type","application/json");
-        xhr.send(k.trim() + "\x01" + v);
-
-        // 接收响应并呈现到页面输出框里
-        xhr.onreadystatechange = function () {
-            if (xhr.readyState == 4) { // 读取完成
-                if (xhr.status == 200) {
-                    text = xhr.responseText;
-                    var oTxt = document.getElementById("output_area");
-                    oTxt.value = text;
-                    var oDiv = document.getElementById("output_html");
-                    text = text.replace(/\n/g, "<br>")
-                    oDiv.innerHTML="<p>" + text + "</p>";
-                }
-            }
-        }
-    }
 </script>
+
+
+<style type="text/css">
+    table.simpletable {
+        font-family: verdana,arial,sans-serif;
+        font-size:11px;
+        color:#333333;
+        border-width: 1px;
+        border-color: #999999;
+        border-collapse: collapse;
+    }   
+    table.simpletable th {
+        background:#b5cfd2 url('cell-blue.jpg');
+        border-width: 1px;
+        padding: 8px;
+        border-style: solid;
+        border-color: #999999;
+    }   
+    table.simpletable td {
+        background:#a5ddc0 url('cell-grey.jpg');
+        border-width: 1px;
+        padding: 8px;
+        border-style: solid;
+        border-color: #999999;
+    }   
+</style>
+
 
 <html>
 <head>
@@ -60,7 +206,7 @@
         <input id="ask_btn" type="button" value=">>" />
         <textarea id="output_area" rows="10" cols="100">输出结果</textarea>
     </div>
-    <div id="output_html">
+    <div id="output_html" style="width: 800px;height:400px;"></div>
         
     </div>
 </body>
