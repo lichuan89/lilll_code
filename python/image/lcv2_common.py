@@ -18,15 +18,36 @@ import base64
 import sys
 import copy
 import traceback
-import common
-import img_common
-from common import log
+import lcommon
+import limg_common
+from lcommon import log
 
 g_open_debug = False 
+
 
 def cv2image_2_file(image, fpath):
     image = np.array(image, dtype='uint8')
     cv2.imwrite(fpath, image, [int(cv2.IMWRITE_PNG_COMPRESSION), 0])
+
+
+def file_2_cv2image(fpath):
+    """
+    读取http路径或者实体机器路径上的图片文件
+    """
+    try:
+        if fpath.find('http') == 0:
+            context = urllib.urlopen(fpath).read()
+            id = os.getpid() 
+            fpath = '/tmp/tmp.%d.jpg' % id
+            lcommon.str_2_file(context, fpath)
+            image = cv2.imread(fpath)
+            os.remove(fpath)
+        else: 
+            image = cv2.imread(fpath)
+        return image # BGR np.array
+    except IOError as error:
+        print >> sys.stderr, error
+        return None
 
 
 def format_cv2image(image):
@@ -62,24 +83,8 @@ def format_cv2image(image):
 def image_2_cv2image(image):
     return format_cv2image(image)
 
-
 def cv2image_2_image(image):
     return format_cv2image(image)
-
-def file_2_cv2image(fpath):
-    try:
-        if fpath.find('http') == 0:
-            #fpath = fpath.replace("ms.bdimg.com", "su.bcebos.com")
-            #fpath = fpath.replace("boscdn.bpc.baidu.com", "su.bcebos.com")
-            context = urllib.urlopen(fpath).read()
-            id = os.getpid() 
-            fpath = '/tmp/tmp.%d.jpg' % id
-            common.str_2_file(context, fpath)
-        image = cv2.imread(fpath)
-        return image # BGR np.array
-    except IOError as error:
-        print >> sys.stderr, error
-        return None
 
 def move_image(image, x, y):
     """
@@ -114,6 +119,7 @@ def light_image(image, a=1, b=0):
     image[image[:, :, :] < 0] = 0 
     return image
 
+
 def resize_image(image, width, height): 
     return cv2.resize(image, dsize=(width, height), interpolation=cv2.INTER_AREA)
 
@@ -130,7 +136,6 @@ def sobel_gray_image(img):
   
     dst = cv2.addWeighted(absX, 0.5, absY, 0.5, 0)    
     return dst
-
 
 
 def template_image(template, image, point=255):
@@ -225,7 +230,7 @@ def imagepath_2_matrix(files, width=200, height=200, tag_num=2, is_fill=True):
         if not is_fill:
             image = resize_image(image, width, height)
         else:
-            image = np.array(img_common.rgb_fill_resize(image, (width, height)), dtype='float')
+            image = np.array(limg_common.rgb_fill_resize(image, (width, height)), dtype='float')
 
         data.append(image)
         t = np.zeros((tag_num))
@@ -315,48 +320,7 @@ def merge_images(images, T, col_num=5, delt=2):
     return arr
      
 
-def collect_image_fea(data, T, expand_num=10, use_fea='pixel'):
-    """
-    files = {'image_file1': '1', 'image_url1': '0'}
-    expand_num, 扩展图片的个数，针对1的case
-    废弃
-    """
-    expand_data = []
-    expand_T = []
-    for i in range(data.shape[0]):
-        if int(np.argmax(T[i])) != 0: # 扩展badcase图片
-            expand_data += [random_expand_image(data[i]) for i in range(expand_num)]
-            expand_T += [T[i] for i in range(expand_num)]
-    expand_data = np.array(expand_data)
-    expand_T = np.array(expand_T)
-    data = np.vstack((data, expand_data))
-    T = np.vstack((T, expand_T))
-    log('finish to expand images. image_num:', data.shape, '; expand_image_num:', expand_data.shape)
-   
-    fea_data = None
-    for i in range(data.shape[0]):
-        image = data[i]
-        # 抽取特征
-        if use_fea == 'pixel':
-            vec = img_common.rgb_2_feature(image, gray_size=(40, 40), hist_size=False, rgb_hist_dim=False, gray_hist=False)
-        elif use_fea == 'rgbhist':
-            vec = img_common.rgb_2_feature(image, gray_size=False, hist_size=(100, 100), rgb_hist_dim=16, gray_hist=False)
-        elif use_fea == 'pixel_rgbhist':
-            vec = img_common.rgb_2_feature(image, gray_size=(40, 40), hist_size=(100, 100), rgb_hist_dim=16, gray_hist=False)
-        fea_data = np.vstack((fea_data, vec)) if fea_data is not None else vec
-    log('finish to extract feature. data:', fea_data.shape, '; T:', T.shape) 
-    return fea_data, T 
 
-def test_read_write():
-    image = np.array( # 2行3列的RGB图像
-        [
-            [[254,   0,   5], [255,   4,   0], [  0,   0,   2], [ 98, 162, 224],],
-            [[252,   2,   3], [  1, 255,   0], [  0,   3, 255], [254, 253, 249],],
-        ], dtype='uint8'
-        )
-    cv2image_2_file(image_2_cv2image(image), 'code.bmp')
-    image = cv2image_2_image(file_2_cv2image('code.bmp'))
-    print image
 
 def test_opt():
     image = cv2image_2_image(file_2_cv2image('test.jpg'))
@@ -391,65 +355,10 @@ def ramdom_show_images(data, T, col_num, row_num, delt=3, is_gray=True, save_fil
     return merge_image
 
 
-
-def test_img_fea():
-
-    # 抓取图片
-    files = {
-        'http://ms.bdimg.com/dsp-image/1371700633.jpg': 1, # badcase
-        'http://ms.bdimg.com/dsp-image/1373219344.jpg': 1, 
-        'http://ms.bdimg.com/dsp-image/259532757.jpg': 1,
-        'http://ms.bdimg.com/dsp-image/828016156.jpg': 0,
-        'http://ms.bdimg.com/dsp-image/949458037.jpg': 0,
-        'http://ms.bdimg.com/dsp-image/553264679.jpg': 0,
-    }
-    data_fpath = 'data.txt'
-    T_fpath = 'T.txt'
-    data, T = imagepath_2_matrix(files, width=150, height=150, tag_num=2) # 根据图像路径载入图片内容矩阵
-
-
-    # 序列化与反序列化
-    common.str_2_file(img_common.matrix_2_str(data), data_fpath) # 矩阵序列化到文件中
-    common.str_2_file(img_common.matrix_2_str(T), T_fpath)
-    data2 = img_common.str_2_matrix(common.file_2_str(data_fpath)) # 文件中读取矩阵
-    T2 = img_common.str_2_matrix(common.file_2_str(T_fpath), dtype='int') 
-   
-    # 合并图片
-    merge_image = merge_images(data2, T2, col_num=2)
-    cv2image_2_file(image_2_cv2image(merge_image), 'test.bmp')
-
-
-    # 提取图片特征
-    data, T = collect_image_fea(data, T, expand_num=2, use_fea='pixel_rgbhist')
-    #data, T = collect_image_fea(data, T, expand_num=2, use_fea='pixel')
-    #data, T = collect_image_fea(data, T, expand_num=2, use_fea='rgbhist')
-    print T
-
-
-def test_muzzy():
-    image = file_2_cv2image('muzzy/1.jpg')
-    image = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
-    sobel_image = sobel_gray_image(image)
-    cv2image_2_file(sobel_image, 'test.bmp')
-    muzzy_q, cache = check_gray_muzzy(image, width=200)
-     
-
-def test_proces_dir(path):
-    arr = os.listdir(path)
-    for v in arr:
-        if v.find('.') == 0:
-            continue
-        f = '%s/%s' % (path, v)
-        if os.path.isfile(f):
-            image = file_2_cv2image(f)
-            image = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
-            muzzy_q, cache = check_gray_muzzy(image, width=500)
-            for k, img in cache.items():  
-                cv2image_2_file(img, 'output/%s.%s.bmp' % (v, k))
-            print '%s\t%f' % (f, muzzy_q)
-
-
 def mask_image(image, text='lichuan89', coordinates=(20, 20), transparency=1, size=1, color=(1, 1, 255), thickness=1):
+    """
+    为图像打上文字水印
+    """
     h, w, c = image.shape 
     mark_h, mark_w, mark_c = 200, 800, 3 
     mark = np.zeros((mark_h, mark_w, mark_c))
@@ -504,27 +413,86 @@ def giffile_2_images(gif_fpath):
  
 
 def test(tag):
-    fpath = '../data/material/x.jpg'
-
+    path = '../../data/example/'
+    fpath = '../../data/example/lena.jpg'
+    if not os.path.exists('output/'):
+        os.mkdir('output/')
     if tag == 'mask_image' or tag == 'all':
         image = cv2image_2_image(file_2_cv2image(fpath))
-        #image = mask_image(image, text='lilll', coordinates=None, transparency=0.7, size=1.2, color=(255, 10, 10), thickness=2)
-        image = mask_image(image, text='lilll', coordinates=(2000, 550), transparency=0.7, size=4.2, color=(10, 10, 255), thickness=8)
-        cv2image_2_file(image_2_cv2image(image), '../data/material/x.png')
+        image = mask_image(image, text='lichuan', coordinates=None, transparency=0.7, size=1.5, color=(10, 10, 255), thickness=2)
+        #image = mask_image(image, text='lilll', coordinates=(2000, 550), transparency=0.7, size=4.2, color=(10, 10, 255), thickness=8)
+        cv2image_2_file(image_2_cv2image(image), 'output/mask.png')
+
+    if tag == 'sobel' or tag == 'all':
+        image = file_2_cv2image(fpath)
+        image = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+        sobel_image = sobel_gray_image(image)
+        cv2image_2_file(sobel_image, 'output/sobel.bmp')
+
+    if tag == 'muzzy' or tag == 'all':
+        image = file_2_cv2image(fpath)
+        image = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+        muzzy_q, cache = check_gray_muzzy(image, width=200)
+        for k, img in cache.items():  
+            cv2image_2_file(img, 'output/%s.%s.bmp' % ('muzzy', k))
+        print 'muzzy\t%s\t%f' % (fpath, muzzy_q)
+        
+    if tag == 'read_write' or tag == 'all':
+        image = np.array( # 2行3列的RGB图像
+            [
+                [[254,   0,   5], [255,   4,   0], [  0,   0,   2], [ 98, 162, 224],],
+                [[252,   2,   3], [  1, 255,   0], [  0,   3, 255], [254, 253, 249],],
+            ], dtype='uint8'
+            )
+        cv2image_2_file(image_2_cv2image(image), 'output/code.bmp')
+        image = cv2image_2_image(file_2_cv2image('output/code.bmp'))
+        print 'read image:', image
+
+    if tag =='merge' or tag == 'all':
+        # 抓取图片
+        files = {
+            'http://ms.bdimg.com/dsp-image/1371700633.jpg': 1, # badcase
+            'http://ms.bdimg.com/dsp-image/1373219344.jpg': 1, 
+            'http://ms.bdimg.com/dsp-image/259532757.jpg': 1,
+            'http://ms.bdimg.com/dsp-image/828016156.jpg': 0,
+            'http://ms.bdimg.com/dsp-image/949458037.jpg': 0,
+            'http://ms.bdimg.com/dsp-image/553264679.jpg': 0,
+        }
+        data_fpath = 'output/data.txt'
+        T_fpath = 'output/T.txt'
+        data, T = imagepath_2_matrix(files, width=150, height=150, tag_num=2) # 根据图像路径载入图片内容矩阵
+
+
+        # 序列化与反序列化
+        lcommon.str_2_file(limg_common.matrix_2_str(data), data_fpath) # 矩阵序列化到文件中
+        lcommon.str_2_file(limg_common.matrix_2_str(T), T_fpath)
+        data2 = limg_common.str_2_matrix(lcommon.file_2_str(data_fpath)) # 文件中读取矩阵
+        #T2 = limg_common.str_2_matrix(lcommon.file_2_str(T_fpath), dtype='int') 
+        T2 = limg_common.str_2_matrix(lcommon.file_2_str(T_fpath)) 
+   
+        # 合并图片
+        merge_image = merge_images(data2, T2, col_num=2)
+        cv2image_2_file(image_2_cv2image(merge_image), 'output/merge.bmp')
+        print 'read T:', T
+
+    if tag == 'process_dir' or tag == 'all':
+        arr = os.listdir(path)
+        for v in arr:
+            if v.find('.') == 0:
+                continue
+            f = '%s/%s' % (path, v)
+            if os.path.isfile(f):
+                image = file_2_cv2image(f)
+                image = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+                muzzy_q, cache = check_gray_muzzy(image, width=500)
+                print '%s\t%f' % (f, muzzy_q)
+    if tag == 'gif' or tag == 'all':
+        images = giffile_2_images('data.train.gif')
+        images = np.array(images)
+        cv2image_2_file(images[0,:,:,: 3], 'output/gif.bmp')
+        
 
 if __name__ == "__main__":
-    tag = 'all'
+    tag = 'process_dir'
     test(tag)
-    #test_proces_dir('muzzy')
-    #test_img_fea()
-
-    #image = file_2_cv2image('example.jpg')
-    #image = mask_image(image, text='lichuan', coordinates=(20, 40), transparency=0.7, size=5, color=(255, 255, 255), thickness=7)
-    #cv2image_2_file(image, 'test.bmp')
-
-    #images = giffile_2_images('data.train.gif')
-    #images = np.array(images)
-    #cv2image_2_file(images[0,:,:,: 3], '1.bmp')
-    pass
-
 
