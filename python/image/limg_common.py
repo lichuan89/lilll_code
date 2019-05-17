@@ -11,7 +11,7 @@ import io
 import base64
 import numpy as np
 import urllib
-import common
+import lcommon
 
 def calc_arr_wrapper(func, images, *arg):
     """
@@ -235,14 +235,14 @@ def matrix_2_str(data):
     numpy矩阵序列化为字符串
     """
     arr = [base64.b64encode(data.tostring()), list(data.shape)]
-    return common.json_2_str(arr)
+    return lcommon.json_2_str(arr)
 
 
 def str_2_matrix(string, dtype='float'):
     """
     字符串反序列化为numpy矩阵
     """
-    arr = common.str_2_json(string)
+    arr = lcommon.str_2_json(string)
     matrix = np.fromstring(base64.b64decode(arr[0]), dtype=dtype).reshape(arr[1])
     return matrix
  
@@ -276,67 +276,6 @@ def even_random_idxs(T, v_max_num):
         idxs += list(random_sub_idxs) 
     idxs = np.array(idxs)
     return idxs
-
-
-def test(tag):
-    from cv2_common import cv2image_2_file, file_2_cv2image, cv2image_2_image, image_2_cv2image
-
-    fpath = '../data/example/lena.jpg'
-    if tag == 'rgb_2_ycrcb' or tag == 'all':
-        rgb = np.array([[0, 0, 250], [0, 100, 0], [100, 0, 0]], dtype='uint8').reshape(1, 3, 3)
-        ycrcb = rgb_2_ycrcb(rgb)
-        print 'ycrcb:', ycrcb 
-
-
-    if tag == 'simple_extract_skin' or tag == 'all':
-        image = cv2image_2_image(file_2_cv2image(fpath))
-        template = simple_extract_skin(image)
-        cv2image_2_file(gray_2_rgb(template), 'data/test/skin.bmp')
-
-    if tag =='hist' or tag == 'all':
-        image = cv2image_2_image(file_2_cv2image(fpath))
-        gray = gray_2_rgb(rgb_2_gray(image)) 
-        cv2image_2_file(gray, 'data/test/gray.bmp')
-        hist = gray_2_hist(rgb_2_gray(image))
-        print 'hist:', hist
-        l, r, u, d = region_image(image, max_gray=222, min_gray=None, delt=10)
-        print l, r, u, d, image.shape
-        image = image[u: d, l: r]
-        smallImage = rgb_resize(image, (40, 40), 'random')
-        smallImage = rgb_resize(smallImage, (400, 400))
-        hist = rgb_2_hist(smallImage, l=4)
-        print 'rgb_hist:', hist
-        cv2image_2_file(image_2_cv2image(smallImage), 'data/test/resize.bmp')
-        
-        image = cv2image_2_image(file_2_cv2image(fpath))
-        #from cv2_common import sobel_gray_image 
-        sobel_image = gray_2_rgb(sobel_gray_image(np.array(rgb_2_gray(image), dtype='uint8')))
-        cv2image_2_file(image_2_cv2image(sobel_image), 'data/test/sobel.bmp')
-        
- 
-    if tag == 'equalization_gray_hist' or tag == 'all':
-        image = cv2image_2_image(file_2_cv2image(fpath))
-        image = equalization_gray_hist(image)
-        cv2image_2_file(image_2_cv2image(image), 'data/test/equalization_gray.bmp')
-
-    if tag == 'even_random_idxs' or tag == 'all':
-        vec = np.array([6, 5, 4, 3, 2, 1])
-        r_vec, nums = random_vec(vec, 3)
-        print r_vec, nums
-        T = np.array([5, 6, 5, 5, 6, 4, 4, 4, 4, 4])
-        idxs = even_random_idxs(T, v_max_num = 3)
-        print idxs, T[idxs]
-
-    if tag == 'region_image' or tag == 'all':
-        from cv2_common import cv2image_2_file, file_2_cv2image
-        image = cv2image_2_image(file_2_cv2image(fpath))
-        image = border_image(image, (128, 0, 0), delt=20)
-        image = border_image(image, (255, 255, 255), delt=-40)
-        l, r, u, d = region_image(image, max_gray=240, min_gray=None, delt=5)
-        print l, r, u, d, image.shape
-        image = image[u: d, l: r]
-        cv2image_2_file(image_2_cv2image(image), 'data/test/region.bmp')
-    
 
 def merge_images(images, T = None, col_num=5, delt=2):
     """
@@ -485,6 +424,66 @@ def sobel_gray_image(img):
             new_image[i+1, j+1] = min(new_imageX[i+1, j+1] * 0.5 + new_imageY[i+1, j+1] * 0.5, 255)
     return np.uint8(new_image) 
 
+
+def test(tag):
+    from lcv2_common import cv2image_2_file, file_2_cv2image, cv2image_2_image, image_2_cv2image
+
+    fpath = '../../data/example/lena.jpg'
+    if tag == 'rgb_2_ycrcb' or tag == 'all':
+        rgb = np.array([[0, 0, 250], [0, 100, 0], [100, 0, 0]], dtype='uint8').reshape(1, 3, 3)
+        ycrcb = rgb_2_ycrcb(rgb)
+        print 'ycrcb:', ycrcb 
+
+
+    if tag == 'simple_extract_skin' or tag == 'all':
+        image = cv2image_2_image(file_2_cv2image(fpath))
+        template = simple_extract_skin(image)
+        cv2image_2_file(gray_2_rgb(template), 'output/skin.bmp')
+
+    if tag =='hist' or tag == 'all':
+        image = cv2image_2_image(file_2_cv2image(fpath))
+        gray = gray_2_rgb(rgb_2_gray(image)) 
+        cv2image_2_file(gray, 'output/gray.bmp')
+        hist = gray_2_hist(rgb_2_gray(image))
+        print 'hist:', hist
+        l, r, u, d = region_image(image, max_gray=222, min_gray=None, delt=10)
+        print l, r, u, d, image.shape
+        image = image[u: d, l: r]
+        smallImage = rgb_resize(image, (40, 40), 'random')
+        smallImage = rgb_resize(smallImage, (400, 400))
+        hist = rgb_2_hist(smallImage, l=4)
+        print 'rgb_hist:', hist
+        cv2image_2_file(image_2_cv2image(smallImage), 'output/resize.bmp')
+        
+        image = cv2image_2_image(file_2_cv2image(fpath))
+        #from lcv2_common import sobel_gray_image 
+        sobel_image = gray_2_rgb(sobel_gray_image(np.array(rgb_2_gray(image), dtype='uint8')))
+        cv2image_2_file(image_2_cv2image(sobel_image), 'output/sobel.bmp')
+        
+ 
+    if tag == 'equalization_gray_hist' or tag == 'all':
+        image = cv2image_2_image(file_2_cv2image(fpath))
+        image = equalization_gray_hist(image)
+        cv2image_2_file(image_2_cv2image(image), 'output/equalization_gray.bmp')
+
+    if tag == 'even_random_idxs' or tag == 'all':
+        vec = np.array([6, 5, 4, 3, 2, 1])
+        r_vec, nums = random_vec(vec, 3)
+        print r_vec, nums
+        T = np.array([5, 6, 5, 5, 6, 4, 4, 4, 4, 4])
+        idxs = even_random_idxs(T, v_max_num = 3)
+        print idxs, T[idxs]
+
+    if tag == 'region_image' or tag == 'all':
+        from lcv2_common import cv2image_2_file, file_2_cv2image
+        image = cv2image_2_image(file_2_cv2image(fpath))
+        image = border_image(image, (128, 0, 0), delt=20)
+        image = border_image(image, (255, 255, 255), delt=-40)
+        l, r, u, d = region_image(image, max_gray=240, min_gray=None, delt=5)
+        print l, r, u, d, image.shape
+        image = image[u: d, l: r]
+        cv2image_2_file(image_2_cv2image(image), 'output/region.bmp')
+    
 
 if __name__ == "__main__":
     # cv2和numpy中的图片shape都是(height, width), pil中的图片size是(width, height)
