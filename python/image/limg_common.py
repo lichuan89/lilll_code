@@ -429,6 +429,9 @@ def test(tag):
     from lcv2_common import cv2image_2_file, file_2_cv2image, cv2image_2_image, image_2_cv2image
 
     fpath = '../../data/example/lena.jpg'
+    if not os.path.exists('output/'):
+        os.mkdir('output/')
+
     if tag == 'rgb_2_ycrcb' or tag == 'all':
         rgb = np.array([[0, 0, 250], [0, 100, 0], [100, 0, 0]], dtype='uint8').reshape(1, 3, 3)
         ycrcb = rgb_2_ycrcb(rgb)

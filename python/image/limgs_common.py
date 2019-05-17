@@ -9,10 +9,10 @@
 import urllib
 import os
 import numpy as np
-from cv2_common import cv2image_2_file, image_2_cv2image, file_2_cv2image, cv2image_2_image, sobel_gray_image, template_image
-from img_common import gray_2_rgb, rgb_resize
-from common import str_2_file, muti_process_stdin, muti_process, list_files
-
+from lcv2_common import cv2image_2_file, image_2_cv2image, file_2_cv2image, cv2image_2_image, sobel_gray_image, template_image
+from limg_common import gray_2_rgb, rgb_resize
+from lcommon import str_2_file, list_files
+from lcmd import muti_process_stdin, muti_process
 
 def urls_2_imageFiles(files):
     """
@@ -127,7 +127,7 @@ def quick_rgb_2_hist(images, l=16):
     """
     将rgb图像转换成rgb直方图
     """
-    from img_common import rgb_2_hist 
+    from limg_common import rgb_2_hist 
     def worker(lines, arg):
         l = arg[0]
         idxs = [v[0] for v in lines]
@@ -170,10 +170,15 @@ def template_visual_image(image, template, tag):
 
 
 def test(tag):
+    path = '../../data/example/images/'
+    fpath = '../../data/example/lena.jpg'
+    if not os.path.exists('output/'):
+        os.mkdir('output/')
+
     if tag == 'urls_2_imageFiles' or tag == 'all':
         files = {
-            'http://ms.bdimg.com/dsp-image/1756536684.jpg' : 'data/test/1756536684_1.jpg',
-            'http://ms.bdimg.com/dsp-image/571671431.jpg' : 'data/test/571671431_0.jpg',
+            'http://ms.bdimg.com/dsp-image/1756536684.jpg' : 'output/urls_2_imageFiles.1.jpg',
+            'http://ms.bdimg.com/dsp-image/571671431.jpg' : 'output/urls_2_imageFiles.2.jpg',
         }
         urls_2_imageFiles(files)
 
@@ -182,42 +187,40 @@ def test(tag):
         quick_urls_2_imageFiles() 
 
     if tag == 'files_2_Ximage_AND_files_2_Ximage' or tag == 'all':
-        files = list_files('data/example/')
+        files = list_files(path)
         X, fnames = files_2_Ximage(files, [10, 10])
-        XImage_2_files(X, [100, 100], 'data/test/', fnames, '1__')
+        XImage_2_files(X, [100, 100], 'output/', fnames, 'files_2_Ximage_AND_files_2_Ximage____')
 
     if tag == 'quick_files_2_Ximage_AND_files_2_Ximage' or tag == 'all':
-        files = list_files('data/example/')
+        files = list_files(path)
         X, fnames = quick_files_2_Ximage(files, [20, 20])
-        quick_XImage_2_files(X, [100, 100], 'data/test/', fnames, '2__')
+        quick_XImage_2_files(X, [100, 100], 'output/', fnames, 'quick_files_2_Ximage_AND_files_2_Ximage____')
 
     if tag == 'quick_transform_image' or tag == 'all':
-        from img_common import simple_extract_skin
-        input_path, output_path = 'data/example/', 'data/test/'
-        quick_transform_image(input_path, output_path, func=simple_extract_skin, size=(100, 100), prefix='3__')
+        from limg_common import simple_extract_skin
+        input_path, output_path = path, 'output/'
+        quick_transform_image(input_path, output_path, func=simple_extract_skin, size=(100, 100), prefix='quick_transform_image____')
 
     if tag == 'template_visual_image' or tag == 'all':
-        from img_common import simple_extract_skin
+        from limg_common import simple_extract_skin
         def worker(image):
             template = simple_extract_skin(image)
             image = template_visual_image(image, template, tag='bakground')
             return image
-        input_path, output_path = 'data/example/', 'data/test/'
-        quick_transform_image(input_path, output_path, func=worker, size=None, prefix='4__')
+        input_path, output_path = path, 'output/'
+        quick_transform_image(input_path, output_path, func=worker, size=None, prefix='template_visual_image____')
         
     if tag =='quick_mask_image' or tag == 'all':
-        from cv2_common import mask_image
+        from lcv2_common import mask_image
         def worker(image):
             image = mask_image(
                     image, text='lichuan89', coordinates=None,
                     transparency=0.7, size=1.2, color=(255, 10, 10), thickness=2)
             return image
-        input_path, output_path = 'data/example/', 'data/test/'
-        input_path, output_path = '../data/material/small/', '../data/material/small_mask/'
-        quick_transform_image(input_path, output_path, func=worker, size=None, prefix='')
+        input_path, output_path = path, 'output/'
+        quick_transform_image(input_path, output_path, func=worker, size=None, prefix='quick_mask_image____')
         
 
-
 if __name__ == "__main__":
-    tag = 'quick_mask_image'
+    tag = 'all'
     test(tag)

@@ -413,7 +413,7 @@ def giffile_2_images(gif_fpath):
  
 
 def test(tag):
-    path = '../../data/example/'
+    path = '../../data/example/images/'
     fpath = '../../data/example/lena.jpg'
     if not os.path.exists('output/'):
         os.mkdir('output/')
@@ -493,6 +493,6 @@ def test(tag):
         
 
 if __name__ == "__main__":
-    tag = 'process_dir'
+    tag = 'all'
     test(tag)
 
