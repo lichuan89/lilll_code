@@ -486,7 +486,7 @@ def test(tag):
                 image = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
                 muzzy_q, cache = check_gray_muzzy(image, width=500)
                 print '%s\t%f' % (f, muzzy_q)
-    if tag == 'gif' or tag == 'all':
+    if tag == 'gif':
         images = giffile_2_images('data.train.gif')
         images = np.array(images)
         cv2image_2_file(images[0,:,:,: 3], 'output/gif.bmp')
