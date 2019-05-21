@@ -48,6 +48,7 @@ class Processor(multiprocessing.Process):
             str_2_file('\n'.join(result).encode('utf8', 'ignore'), '%s/tmp.%s' % (self.share, id))
         else:
             self.share.setdefault(id, result)
+
 def collect_train_data():
     thread_num = 11
     files = {}
@@ -281,8 +282,10 @@ def collect_image_fea(files, expend_num=10, use_fea='pixel'):
         if g_open_debug:
             print >> sys.stderr, 'finish to process %s' % fname 
     return data, T 
+
 def cv2image_2_file(image, fpath):
     cv2.imwrite(fpath, image, [int(cv2.IMWRITE_PNG_COMPRESSION), 0])
+
 def image_2_cv2image(image):
     return format_cv2image(image)
 
@@ -369,16 +372,30 @@ def file_2_cv2image(fpath):
         print >> sys.stderr, error
         return None
 
+def test(tag):
+    from lcv2_common import cv2image_2_file, file_2_cv2image, cv2image_2_image, image_2_cv2image
 
+    fpath = '../../data/example/digits/1013_7.bmp'
+    if not os.path.exists('output/'):
+        os.mkdir('output/')
+
+    if tag == 'collect_image_fea' or tag == 'all':
+        files = {fpath : '7'}
+        img_fea = collect_image_fea(files, expend_num=0, use_fea='pixel')
+        print img_fea 
+    if tag == '1':
+        train_image_fpath = 'url.list'
+        data = np.loadtxt('%s.fea' % train_image_fpath, delimiter=",")
+        T = np.loadtxt('%s.val' % train_image_fpath, delimiter=",")
+        print data.shape, T.shape
+        data = data[:, : 1600].reshape((-1, 40, 40))
+        T = np.argmax(T, axis=1) 
+        fnames = ['%d_%d.bmp' % (i, T[i]) for i in range(T.shape[0])]
+        from limgs_common import XImage_2_files 
+        XImage_2_files(data, None, path='test/', fnames=fnames, prefix='')
 
 if __name__ == "__main__":
-    train_image_fpath = 'url.list'
-    data = np.loadtxt('%s.fea' % train_image_fpath, delimiter=",")
-    T = np.loadtxt('%s.val' % train_image_fpath, delimiter=",")
-    print data.shape, T.shape
-    data = data[:, : 1600].reshape((-1, 40, 40))
-    T = np.argmax(T, axis=1) 
-    fnames = ['%d_%d.bmp' % (i, T[i]) for i in range(T.shape[0])]
-    from limgs_common import XImage_2_files 
-    XImage_2_files(data, None, path='test/', fnames=fnames, prefix='')
+    tag = 'all'
+    test(tag)
+
 

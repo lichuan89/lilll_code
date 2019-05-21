@@ -11,6 +11,7 @@ import struct
 import hashlib
 import logging
 import json 
+import hashlib
 import datetime
 import re
 import fileinput
@@ -122,6 +123,13 @@ def read_dir(path, decode='utf8'):
                 context = context.decode(decode, 'ignore')
             output.append(context)
     return output 
+
+
+def md5(ustring):
+    m1 = hashlib.md5()
+    m1.update(ustring.encode("utf-8"))
+    token = m1.hexdigest()
+    return token
 
 
 def test(opt):

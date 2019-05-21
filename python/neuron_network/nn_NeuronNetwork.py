@@ -9,6 +9,7 @@
 import base64
 import numpy as np
 import itertools
+import os
 import math
 import sys
 import collections
@@ -32,9 +33,19 @@ from cnn_common import maxpool_gradient
 from cnn_common import avgpool
 from cnn_common import avgpool_gradient
 from lcommon import log
+from lcommon import md5 
+from lcmd import muti_process
 
+g_open_text = True # 程序处于测试状态, 固定随机数字
 g_open_debug = True 
 g_debug_cache = {} 
+
+def matrix_2_string(matrix):
+    return json_2_str([base64.b64encode(matrix.tostring()), list(matrix.shape)])
+
+def string_2_matrix(string):
+    matrix_shape = str_2_json(string)
+    return np.fromstring(base64.b64decode(matrix_shape[0])).reshape(matrix_shape[1])
 
 class Layer(object):
     """
@@ -77,7 +88,16 @@ class LinearLayer(Layer):
             self.from_string(ws_bs)
             return 
         # n_out个神经元，每个神经元接收n_in个输入特征
-        self.W = np.random.randn(n_in, n_out) * 0.1 
+        self.W = np.random.randn(n_in, n_out) * 0.1
+
+        if g_open_text: 
+            fpath = './tmp.%sx%s.randn.txt' % (n_in, n_out)
+            if not os.path.exists(fpath):
+                str_2_file(matrix_2_string(self.W), fpath)
+            else:
+                self.W = string_2_matrix(file_2_str(fpath))
+
+ 
         self.b = np.zeros(n_out)
   
     def get_params_iter(self):
@@ -103,6 +123,7 @@ class LinearLayer(Layer):
 
     def to_string(self):
         return [base64.b64encode(self.W.tostring()), base64.b64encode(self.b.tostring()), list(self.W.shape), list(self.b.shape)] 
+
 
 '''
 class BatchNormLayer(layer):
@@ -529,6 +550,12 @@ class NeuronNetwork(object):
             max_nb_of_iterations, 
             learning_rate
             ):
+        if g_open_text:
+            log('train_random_grad_desc param is:', \
+                    md5(matrix_2_string(X_train)), md5(matrix_2_string(T_train)), \
+                    md5(matrix_2_string(X_validation)), md5(matrix_2_string(T_validation)), \
+                    batch_size, max_nb_of_iterations, learning_rate)
+
         nb_of_batches = X_train.shape[0] / batch_size  # 批处理次数
         # 从训练集中分批抽取(X, Y) 
         XT_batches = zip(
@@ -560,8 +587,10 @@ class NeuronNetwork(object):
                 g_debug_cache['Y_validation'].append(Y_validation)
             accuracy = self.test_accuracy(X_validation, T_validation)
             log('finish to train once. i:', i, ', cost:', cost, ', accuracy:', accuracy)
+            if i == 100:
+                sys.exit()
             if len(validation_costs) > 3:
-                if validation_costs[-1] >= validation_costs[-2] >= validation_costs[-3] and accuracy > 0.98:
+                if validation_costs[-1] >= validation_costs[-2] >= validation_costs[-3]:
                     break
             i += 1
  
@@ -627,7 +656,7 @@ def images_2_feature(X_T_list, arg=[(50, 40), ['pixel'], 0]):
                 resize_image = rgb_resize(image, gray_size)
                 if feature_size[2] == 1:
                     gray_X = rgb_2_gray(resize_image) # 产出灰度像素
-                    #gray_X = equalization_gray_hist(gray_X, 0, 16)
+                    gray_X = equalization_gray_hist(gray_X, 0, 16)
                     #gray_X = 13 * (gray_X) / 255.0
                     fea.append(gray_X.reshape(-1))
                 else:
@@ -677,7 +706,6 @@ def collect_images_feature(path, shape=(100, 100, 3), feature_size=(40, 40, 1), 
     from sklearn import datasets, cross_validation, metrics
     from limgs_common import quick_files_2_Ximage, files_2_Ximage 
     from limg_common import rgb_2_gray
-    from lcommon import muti_process
 
     # 1. 载入图像    
     files = list_files(path)
@@ -766,7 +794,7 @@ def small_train(tag, X_train, T_train, X_validation, T_validation, X_test, T_tes
                 X_validation,
                 T_validation,
                 batch_size=25,
-                max_nb_of_iterations=500, 
+                max_nb_of_iterations=300, 
                 learning_rate=0.1
             )
         minibatch_costs, training_costs, validation_costs = costs_vec
@@ -778,7 +806,7 @@ def small_train(tag, X_train, T_train, X_validation, T_validation, X_test, T_tes
                 T_train,
                 X_validation,
                 T_validation,
-                max_nb_of_iterations=100, 
+                max_nb_of_iterations=1600, 
                 learning_rate=0.1
             )
         training_costs, validation_costs = costs_vec
@@ -962,8 +990,40 @@ def main():
 
     #X, T = collect_images_feature(path=path, shape=read_shape, feature_size=feature_size, fea_types=fea_types, expand_num=expand_num)
     #X_train, T_train, X_validation, T_validation, X_test, T_test = train_test_split(X, T)
-    import fea 
-    X_train, T_train, X_validation, T_validation, X_test, T_test = fea.collect_train_data()
+
+    #import fea 
+    #X_train, T_train, X_validation, T_validation, X_test, T_test = fea.collect_train_data()
+
+
+
+    from sklearn import datasets, cross_validation, metrics
+    digits = datasets.load_digits()
+    T = np.zeros((digits.target.shape[0],10)) 
+    T[np.arange(len(T)), digits.target] += 1
+    import random
+    def cross_validation_split(X, T):
+        n = len(X)
+        nums = range(n)
+        random.shuffle(nums)
+        if g_open_text:
+            fpath = "./tmp.random_nums.txt"
+            if not os.path.exists(fpath):
+                str_2_file(json_2_str(nums), fpath)
+            else:
+                nums = str_2_json(file_2_str(fpath))
+        train_nums = nums[: int(0.6 * n)]
+        validation_nums = nums[int(0.6 * n): int(0.8 * n)]
+        test_nums = nums[int(0.8 * n): n]
+        X_train = np.array([X[i] for i in train_nums])
+        T_train = np.array([T[i] for i in train_nums])
+        X_validation = np.array([X[i] for i in validation_nums])
+        T_validation = np.array([T[i] for i in validation_nums])
+        X_test = np.array([X[i] for i in test_nums])
+        T_test = np.array([T[i] for i in test_nums])
+        return X_train, X_validation, X_test, T_train, T_validation, T_test
+    X_train, X_validation, X_test, T_train, T_validation, T_test = cross_validation_split(digits.data, T)
+    print digits.data.shape, X_train.shape, X_test.shape, T_validation.shape
+
 
     if select == 'train':
         if tag == 'cnn':
@@ -973,7 +1033,7 @@ def main():
         if tag == 'nn':
             tag = 'nn'
             num1 = 20
-            num2 = 15
+            num2 = 20
 
             #num1 = 150
             #num2 = 50
@@ -998,6 +1058,14 @@ def main():
         #show_nn_iterations_gif(fpath2, fpath1, fpath12)
         #show_nn_iterations_gif(fpath2, fpath3, fpath23)
 
+def test():
+    W = np.random.randn(64, 20) * 0.1
+    str_2_file(matrix_2_string(W), '64x20.randn.txt')
+    W1 = string_2_matrix(file_2_str('64x20.randn.txt'))
+    W = np.random.randn(20, 20) * 0.1
+    str_2_file(matrix_2_string(W), '20x20.randn.txt')
+    W = np.random.randn(20, 10) * 0.1
+    str_2_file(matrix_2_string(W), '20x10.randn.txt')
 
 if __name__ == "__main__":
     log('begin to run program')
