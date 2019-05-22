@@ -16,6 +16,9 @@ from functools import reduce
 #   https://zhuanlan.zhihu.com/p/37740860
 
 def logistic(z):
+    """
+    logistic即sigmoid,将实数映射到概率区间(0, 1), 可以用于二分类
+    """
     o = copy.deepcopy(z)
     o[o > 0] = 1 / (1 + np.exp(-o[o > 0]))
     o[o <= 0] = np.exp(o[o <= 0]) / (1 + np.exp(o[o <= 0]))
@@ -25,7 +28,12 @@ def logistic_deriv(y):
     return np.multiply(y, (1 - y)) 
 
 def softmax(z):
-    return np.exp(z) / np.sum(np.exp(z), axis=1, keepdims=True)
+    """
+    将k维实数向量映射到k维概率区间(0, 1), 和为1,  可以用于多分类
+    输入是 n x k维, 产出n个样本的k分类概率
+    """
+    return np.exp(z) / np.sum(np.exp(z), axis=1, keepdims=True) # 保留第axis=1维, 压缩其他维度
+
 
 def softmax_deriv(y):
     return np.multiply(y, (1 - y)) 

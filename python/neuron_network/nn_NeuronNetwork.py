@@ -12,6 +12,7 @@ import itertools
 import os
 import math
 import sys
+import random
 import collections
 from lcommon import str_2_json, json_2_str, file_2_str, str_2_file, clear_dir, list_files 
 from nn_activation import logistic
@@ -37,15 +38,41 @@ from lcommon import md5
 from lcmd import muti_process
 
 g_open_text = True # 程序处于测试状态, 固定随机数字
-g_open_debug = True 
-g_debug_cache = {} 
+g_open_debug = True # 用于调试, 打印更多日志
+g_debug_cache = {}  # 用于调试, 缓存数据
+
+def cross_validation_split(X, T):
+    """
+    将数据集拆分为60%训练集、20%验证集、20%测试集
+    """
+    n = len(X)
+    nums = range(n)
+    random.shuffle(nums)
+    if g_open_text:
+        fpath = "./tmp.random_nums.txt"
+        if not os.path.exists(fpath):
+            str_2_file(json_2_str(nums), fpath)
+        else:
+            nums = str_2_json(file_2_str(fpath))
+    train_nums = nums[: int(0.6 * n)]
+    validation_nums = nums[int(0.6 * n): int(0.8 * n)]
+    test_nums = nums[int(0.8 * n): n]
+    X_train = np.array([X[i] for i in train_nums])
+    T_train = np.array([T[i] for i in train_nums])
+    X_validation = np.array([X[i] for i in validation_nums])
+    T_validation = np.array([T[i] for i in validation_nums])
+    X_test = np.array([X[i] for i in test_nums])
+    T_test = np.array([T[i] for i in test_nums])
+    return X_train, X_validation, X_test, T_train, T_validation, T_test
 
 def matrix_2_string(matrix):
     return json_2_str([base64.b64encode(matrix.tostring()), list(matrix.shape)])
 
+
 def string_2_matrix(string):
     matrix_shape = str_2_json(string)
     return np.fromstring(base64.b64decode(matrix_shape[0])).reshape(matrix_shape[1])
+
 
 class Layer(object):
     """
@@ -84,11 +111,11 @@ class LinearLayer(Layer):
     """
     
     def __init__(self, n_in=None, n_out=None, ws_bs=None):
+        # n_out个神经元，每个神经元接收n_in个输入特征
         if ws_bs is not None:
             self.from_string(ws_bs)
             return 
-        # n_out个神经元，每个神经元接收n_in个输入特征
-        self.W = np.random.randn(n_in, n_out) * 0.1
+        self.W = np.random.randn(n_in, n_out) * 0.1 # 标准正态分布
 
         if g_open_text: 
             fpath = './tmp.%sx%s.randn.txt' % (n_in, n_out)
@@ -99,7 +126,8 @@ class LinearLayer(Layer):
 
  
         self.b = np.zeros(n_out)
-  
+ 
+ 
     def get_params_iter(self):
         return itertools.chain(np.nditer(self.W, op_flags=['readwrite']),
                                np.nditer(self.b, op_flags=['readwrite']))
@@ -107,6 +135,7 @@ class LinearLayer(Layer):
     def get_output(self, X):
         # 输出矩阵：sample_num * n_out
         return X.dot(self.W) + self.b
+
         
     def get_params_grad(self, X, output_grad):
         # 各个样本的对应梯度之和
@@ -771,15 +800,15 @@ def small_train(tag, X_train, T_train, X_validation, T_validation, X_test, T_tes
     # 构建神经网络
     if tag == 'nn':
         nn = NeuronNetwork(
-                X_train.shape[1], 
-                [num1, num2, T_train.shape[1]],
-                [LogisticLayer, LogisticLayer, SoftmaxLayer],
-                crossEntropy_cost,
-                crossEntropy_cost_deriv 
+                X_train.shape[1], # 输入样本特征数 
+                [num1, num2, T_train.shape[1]], # 每一层网络输出特征数
+                [LogisticLayer, LogisticLayer, SoftmaxLayer], # 每一层网络的激活函数
+                crossEntropy_cost, # 损失函数
+                crossEntropy_cost_deriv # 损失函数梯度计算
             )
     elif tag == 'cnn':
         nn = NeuronNetwork(
-                X_train.shape[1], 
+                X_train.shape[1], # 输入样本特征数 
                 [num1, num2, T_train.shape[1]],
                 [AvgpoolLayer, LogisticLayer, SoftmaxLayer],
                 crossEntropy_cost,
@@ -1000,30 +1029,7 @@ def main():
     digits = datasets.load_digits()
     T = np.zeros((digits.target.shape[0],10)) 
     T[np.arange(len(T)), digits.target] += 1
-    import random
-    def cross_validation_split(X, T):
-        n = len(X)
-        nums = range(n)
-        random.shuffle(nums)
-        if g_open_text:
-            fpath = "./tmp.random_nums.txt"
-            if not os.path.exists(fpath):
-                str_2_file(json_2_str(nums), fpath)
-            else:
-                nums = str_2_json(file_2_str(fpath))
-        train_nums = nums[: int(0.6 * n)]
-        validation_nums = nums[int(0.6 * n): int(0.8 * n)]
-        test_nums = nums[int(0.8 * n): n]
-        X_train = np.array([X[i] for i in train_nums])
-        T_train = np.array([T[i] for i in train_nums])
-        X_validation = np.array([X[i] for i in validation_nums])
-        T_validation = np.array([T[i] for i in validation_nums])
-        X_test = np.array([X[i] for i in test_nums])
-        T_test = np.array([T[i] for i in test_nums])
-        return X_train, X_validation, X_test, T_train, T_validation, T_test
     X_train, X_validation, X_test, T_train, T_validation, T_test = cross_validation_split(digits.data, T)
-    print digits.data.shape, X_train.shape, X_test.shape, T_validation.shape
-
 
     if select == 'train':
         if tag == 'cnn':
