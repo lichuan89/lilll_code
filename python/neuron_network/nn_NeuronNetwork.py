@@ -13,7 +13,7 @@ import os
 import math
 import sys
 import random
-import collections
+#import collections
 from lcommon import str_2_json, json_2_str, file_2_str, str_2_file, clear_dir, list_files 
 from nn_activation import logistic
 from nn_activation import logistic_deriv
@@ -27,6 +27,12 @@ from nn_activation import arctan
 from nn_activation import arctan_deriv 
 from nn_activation import crossEntropy_cost
 from nn_activation import crossEntropy_cost_deriv 
+from nn_matrix import cross_validation_split
+from nn_matrix import matrix_2_string 
+from nn_matrix import string_2_matrix 
+from nn_matrix import accuracy_score 
+from nn_matrix import recall_score 
+from nn_matrix import confusion_matrix 
 from cnn_common import conv
 from cnn_common import conv_gradient
 from cnn_common import maxpool
@@ -37,41 +43,9 @@ from lcommon import log
 from lcommon import md5 
 from lcmd import muti_process
 
-g_open_text = True # 程序处于测试状态, 固定随机数字
+g_open_test = True # 程序处于测试状态, 固定随机数字
 g_open_debug = True # 用于调试, 打印更多日志
 g_debug_cache = {}  # 用于调试, 缓存数据
-
-def cross_validation_split(X, T):
-    """
-    将数据集拆分为60%训练集、20%验证集、20%测试集
-    """
-    n = len(X)
-    nums = range(n)
-    random.shuffle(nums)
-    if g_open_text:
-        fpath = "./tmp.random_nums.txt"
-        if not os.path.exists(fpath):
-            str_2_file(json_2_str(nums), fpath)
-        else:
-            nums = str_2_json(file_2_str(fpath))
-    train_nums = nums[: int(0.6 * n)]
-    validation_nums = nums[int(0.6 * n): int(0.8 * n)]
-    test_nums = nums[int(0.8 * n): n]
-    X_train = np.array([X[i] for i in train_nums])
-    T_train = np.array([T[i] for i in train_nums])
-    X_validation = np.array([X[i] for i in validation_nums])
-    T_validation = np.array([T[i] for i in validation_nums])
-    X_test = np.array([X[i] for i in test_nums])
-    T_test = np.array([T[i] for i in test_nums])
-    return X_train, X_validation, X_test, T_train, T_validation, T_test
-
-def matrix_2_string(matrix):
-    return json_2_str([base64.b64encode(matrix.tostring()), list(matrix.shape)])
-
-
-def string_2_matrix(string):
-    matrix_shape = str_2_json(string)
-    return np.fromstring(base64.b64decode(matrix_shape[0])).reshape(matrix_shape[1])
 
 
 class Layer(object):
@@ -117,7 +91,7 @@ class LinearLayer(Layer):
             return 
         self.W = np.random.randn(n_in, n_out) * 0.1 # 标准正态分布
 
-        if g_open_text: 
+        if g_open_test: 
             fpath = './tmp.%sx%s.randn.txt' % (n_in, n_out)
             if not os.path.exists(fpath):
                 str_2_file(matrix_2_string(self.W), fpath)
@@ -451,7 +425,8 @@ def backward_step(activations, targets, layers, cost_grad_func):
     """
     后向传播，取损失函数在每一层的梯度
     """
-    param_grads = collections.deque()  
+    #param_grads = collections.deque()  
+    param_grads = [] 
     output_grad = None
     for layer in reversed(layers):
         log('begin to backward_step:', str(layer))   
@@ -468,10 +443,13 @@ def backward_step(activations, targets, layers, cost_grad_func):
         log('begin to calc cost') 
         X = activations[-1]
         grads = layer.get_params_grad(X, output_grad)
-        param_grads.appendleft(grads)
+        #param_grads.appendleft(grads)
+        param_grads.append(grads)
         output_grad = input_grad
         log('finish to backward_step')
-    return list(param_grads)
+    param_grads.reverse()
+    return param_grads
+    #return list(param_grads)
 
 class NeuronNetwork(object):
     def __init__(
@@ -551,10 +529,15 @@ class NeuronNetwork(object):
     def test_accuracy(self, X_test, T_test):
         from sklearn import metrics
         y_test = self.predict(X_test)
-        y_true = np.argmax(T_test, axis=1) 
-        y_pred = np.argmax(y_test, axis=1)   
-        test_accuracy = metrics.accuracy_score(y_true, y_pred)  
-        return test_accuracy
+        y_true = np.argmax(T_test, axis=1)
+        y_pred = np.argmax(y_test, axis=1)
+
+        #test_accuracy = metrics.accuracy_score(y_true, y_pred) 
+        diff = y_true - y_pred
+        accuracy_score = float(len(diff[diff == 0])) / len(diff) # 准确率, 代替sklearn.accuracy_score
+         
+        return accuracy_score 
+        #return test_accuracy
     
     def predict(self, X):
         activations = forward_step(X, self.layers) 
@@ -562,15 +545,15 @@ class NeuronNetwork(object):
     
  
     def train_once(self, X, T, learning_rate):
-        activations = forward_step(X, self.layers)
-        cost = self.cost_func(activations[-1], T)
+        activations = forward_step(X, self.layers) # 计算每一层的输出 
+        cost = self.cost_func(activations[-1], T) # 计算错误率cost
         if learning_rate is None: 
             return cost
-        param_grads = backward_step(activations, T, self.layers, self.cost_grad_func)   
+        param_grads = backward_step(activations, T, self.layers, self.cost_grad_func) # 计算参数的梯度
         for layer, layer_backprop_grads in zip(self.layers, param_grads):
             #for param, grad in itertools.izip(layer.get_params(), layer_backprop_grads):
             for param, grad in zip(layer.get_params(), layer_backprop_grads):
-                param -= learning_rate * grad
+                param -= learning_rate * grad # 更新参数
         return cost
         
     def train_random_grad_desc(
@@ -583,7 +566,7 @@ class NeuronNetwork(object):
             max_nb_of_iterations, 
             learning_rate
             ):
-        if g_open_text:
+        if g_open_test:
             log('train_random_grad_desc param is:', \
                     md5(matrix_2_string(X_train)), md5(matrix_2_string(T_train)), \
                     md5(matrix_2_string(X_validation)), md5(matrix_2_string(T_validation)), \
@@ -607,21 +590,17 @@ class NeuronNetwork(object):
                 cost = self.train_once(X, T, learning_rate)
                 minibatch_costs.append(cost)
                 log('finish to do minibatch train. i:', len(minibatch_costs), ', cost:', cost) 
-            cost = self.train_once(X_train, T_train, learning_rate=None)
-            print >> sys.stderr, 'train: train cost is %f' % cost
-            training_costs.append(cost)
             cost = self.train_once(X_validation, T_validation, learning_rate=None)
-            print >> sys.stderr, 'train: validation cost is %f' % cost
             validation_costs.append(cost)
             if g_open_debug:
+                cost = self.train_once(X_train, T_train, learning_rate=None)
+                training_costs.append(cost)
                 activations = forward_step(X_validation, self.layers)
                 Y_validation = activations[-1]
                 g_debug_cache.setdefault('Y_validation', [])
                 g_debug_cache['Y_validation'].append(Y_validation)
             accuracy = self.test_accuracy(X_validation, T_validation)
             log('finish to train once. i:', i, ', cost:', cost, ', accuracy:', accuracy)
-            if i == 100:
-                sys.exit()
             if len(validation_costs) > 3:
                 if validation_costs[-1] >= validation_costs[-2] >= validation_costs[-3]:
                     break
@@ -645,9 +624,7 @@ class NeuronNetwork(object):
 
         i = 0
         for iteration in range(max_nb_of_iterations):
-            print >> sys.stderr, 'train: iteration %d' % i
             cost = self.train_once(X_train, T_train, learning_rate)
-            print >> sys.stderr, 'train: train cost is %f' % cost
             training_costs.append(cost)
             cost = self.train_once(X_validation, T_validation, learning_rate=None)
             validation_costs.append(cost)
@@ -995,8 +972,8 @@ def main():
     select = 'train'
     read_shape = (100, 100, 3)
 
-    train_method='random_grad_desc'
     train_method='grad_desc'
+    train_method='random_grad_desc'
     
     expand_num = 2 # 非0样本扩充图片的数量
     fea_types = ['pixel'] # 可以取值['pixel', 'hist', 'rgb_hist']
@@ -1033,7 +1010,8 @@ def main():
     digits = datasets.load_digits()
     T = np.zeros((digits.target.shape[0],10)) 
     T[np.arange(len(T)), digits.target] += 1
-    X_train, X_validation, X_test, T_train, T_validation, T_test = cross_validation_split(digits.data, T)
+    random_path = "./tmp.random_nums.txt" if g_open_test else None
+    X_train, X_validation, X_test, T_train, T_validation, T_test = cross_validation_split(digits.data, T, random_path)
 
     if select == 'train':
         if tag == 'cnn':
@@ -1045,8 +1023,7 @@ def main():
             num1 = 20
             num2 = 20
 
-            #num1 = 150
-            #num2 = 50
+        # 三层神经网络
         small_train(tag, X_train, T_train, X_validation, T_validation, X_test, T_test, num1, num2, train_method=train_method, save_file='tmp.simple_nn.txt')
     if select == 'predict':
         small_test('tmp.simple_nn.txt', X_test, T_test)
@@ -1068,14 +1045,6 @@ def main():
         #show_nn_iterations_gif(fpath2, fpath1, fpath12)
         #show_nn_iterations_gif(fpath2, fpath3, fpath23)
 
-def test():
-    W = np.random.randn(64, 20) * 0.1
-    str_2_file(matrix_2_string(W), '64x20.randn.txt')
-    W1 = string_2_matrix(file_2_str('64x20.randn.txt'))
-    W = np.random.randn(20, 20) * 0.1
-    str_2_file(matrix_2_string(W), '20x20.randn.txt')
-    W = np.random.randn(20, 10) * 0.1
-    str_2_file(matrix_2_string(W), '20x10.randn.txt')
 
 if __name__ == "__main__":
     log('begin to run program')
