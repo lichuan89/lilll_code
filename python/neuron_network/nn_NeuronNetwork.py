@@ -8,7 +8,7 @@
 
 import base64
 import numpy as np
-import itertools
+#import itertools
 import os
 import math
 import sys
@@ -79,7 +79,7 @@ class Layer(object):
     神经网络的层
     """
     
-    def get_params_iter(self):
+    def get_params(self):
         """
         参数
         """
@@ -128,10 +128,11 @@ class LinearLayer(Layer):
         self.b = np.zeros(n_out)
  
  
-    def get_params_iter(self):
-        return itertools.chain(np.nditer(self.W, op_flags=['readwrite']),
-                               np.nditer(self.b, op_flags=['readwrite']))
-    
+    def get_params(self):
+        #return itertools.chain(np.nditer(self.W, op_flags=['readwrite']),
+        #                       np.nditer(self.b, op_flags=['readwrite']))
+        return [self.W, self.b]
+   
     def get_output(self, X):
         # 输出矩阵：sample_num * n_out
         return X.dot(self.W) + self.b
@@ -141,17 +142,18 @@ class LinearLayer(Layer):
         # 各个样本的对应梯度之和
         JW = X.T.dot(output_grad)
         Jb = np.sum(output_grad, axis=0)
-        return [g for g in itertools.chain(np.nditer(JW), np.nditer(Jb))]
+        #return [g for g in itertools.chain(np.nditer(JW), np.nditer(Jb))]
+        return [JW, Jb]
     
     def get_input_grad(self, Y, output_grad):
         return output_grad.dot(self.W.T)
 
     def from_string(self, ws_bs):
-        self.W = np.fromstring(base64.b64decode(ws_bs[0])).reshape(ws_bs[2])
-        self.b = np.fromstring(base64.b64decode(ws_bs[1])).reshape(ws_bs[3])
+        self.W, self.b = string_2_matrix(ws_bs[0]), string_2_matrix(ws_bs[1])
+
 
     def to_string(self):
-        return [base64.b64encode(self.W.tostring()), base64.b64encode(self.b.tostring()), list(self.W.shape), list(self.b.shape)] 
+        return [matrix_2_string(self.W), matrix_2_string(self.b)]
 
 
 '''
@@ -174,7 +176,7 @@ class BatchNormLayer(layer):
 
         self.mid = None
 
-    def get_params_iter(self):
+    def get_params(self):
         return itertools.chain(np.nditer(self.alpha, op_flags=['readwrite']),
                                np.nditer(self.beta, op_flags=['readwrite']))
     
@@ -382,10 +384,11 @@ class ConvLayer(Layer):
             print >> sys.stderr, 'W.shape:%s, b.shape:%s' % (self.W.shape, self.b.shape) 
 
 
-    def get_params_iter(self):
-        return itertools.chain(np.nditer(self.W, op_flags=['readwrite']),
-                               np.nditer(self.b, op_flags=['readwrite']))
-    
+    def get_params(self):
+        #return itertools.chain(np.nditer(self.W, op_flags=['readwrite']),
+        #                       np.nditer(self.b, op_flags=['readwrite']))
+        return [self.W, self.b]
+ 
     def get_output(self, X):
         input_size = [X.shape[0]] + list(self.insize)
         X = X.reshape(input_size)
@@ -520,8 +523,8 @@ class NeuronNetwork(object):
                 self.layers.append(ConvLayer(ws_bs=(ws, bs, wi, bi, insize, ksize)))
                 self.layers.append(classes[active_func_name](args=(insize2, ksize2, stride2, active_func_name)))
             else:
-                ws, bs, wi, bi, active_func_name = layer_string
-                self.layers.append(LinearLayer(ws_bs=(ws, bs, wi, bi))) 
+                ws, bs, active_func_name = layer_string
+                self.layers.append(LinearLayer(ws_bs=(ws, bs))) 
                 self.layers.append(classes[active_func_name]())
         self.cost_func = classes[objs['cost_func']]
         self.cost_grad_func = classes[objs['cost_grad_func']]
@@ -540,9 +543,9 @@ class NeuronNetwork(object):
                 insize2, ksize2, stride2, active = self.layers[i + 1].to_string()
                 obj['layers'].append([ws, bs, wi, bi, insize, ksize, insize2, ksize2, stride2, active])
             else:
-                ws, bs, wi, bi= self.layers[i].to_string()
+                ws, bs = self.layers[i].to_string()
                 active, = self.layers[i + 1].to_string()
-                obj['layers'].append([ws, bs, wi, bi, active_func_name])
+                obj['layers'].append([ws, bs, active_func_name])
         return json_2_str(obj)
  
     def test_accuracy(self, X_test, T_test):
@@ -565,7 +568,8 @@ class NeuronNetwork(object):
             return cost
         param_grads = backward_step(activations, T, self.layers, self.cost_grad_func)   
         for layer, layer_backprop_grads in zip(self.layers, param_grads):
-            for param, grad in itertools.izip(layer.get_params_iter(), layer_backprop_grads):
+            #for param, grad in itertools.izip(layer.get_params(), layer_backprop_grads):
+            for param, grad in zip(layer.get_params(), layer_backprop_grads):
                 param -= learning_rate * grad
         return cost
         
