@@ -30,9 +30,10 @@ from nn_activation import crossEntropy_cost_deriv
 from nn_matrix import cross_validation_split
 from nn_matrix import matrix_2_string 
 from nn_matrix import string_2_matrix 
-from nn_matrix import accuracy_score 
-from nn_matrix import recall_score 
-from nn_matrix import confusion_matrix 
+from nn_matrix import calc_accuracy_score 
+from nn_matrix import calc_recall_score 
+from nn_matrix import calc_confusion_matrix 
+from nn_matrix import oneHotEncoder_2_idx, idx_2_oneHotEncoder 
 from cnn_common import conv
 from cnn_common import conv_gradient
 from cnn_common import maxpool
@@ -527,17 +528,12 @@ class NeuronNetwork(object):
         return json_2_str(obj)
  
     def test_accuracy(self, X_test, T_test):
-        from sklearn import metrics
         y_test = self.predict(X_test)
         y_true = np.argmax(T_test, axis=1)
         y_pred = np.argmax(y_test, axis=1)
-
-        #test_accuracy = metrics.accuracy_score(y_true, y_pred) 
-        diff = y_true - y_pred
-        accuracy_score = float(len(diff[diff == 0])) / len(diff) # 准确率, 代替sklearn.accuracy_score
-         
+        
+        accuracy_score = calc_accuracy_score(y_true, y_pred)
         return accuracy_score 
-        #return test_accuracy
     
     def predict(self, X):
         activations = forward_step(X, self.layers) 
@@ -593,8 +589,6 @@ class NeuronNetwork(object):
             cost = self.train_once(X_validation, T_validation, learning_rate=None)
             validation_costs.append(cost)
             if g_open_debug:
-                cost = self.train_once(X_train, T_train, learning_rate=None)
-                training_costs.append(cost)
                 activations = forward_step(X_validation, self.layers)
                 Y_validation = activations[-1]
                 g_debug_cache.setdefault('Y_validation', [])
@@ -607,7 +601,7 @@ class NeuronNetwork(object):
             i += 1
  
         nb_of_iterations = iteration + 1
-        costs_vec = [minibatch_costs, training_costs, validation_costs]
+        costs_vec = [minibatch_costs, validation_costs]
         return (validation_costs[-1], nb_of_iterations, costs_vec)
     
     def train_grad_desc(
@@ -682,7 +676,7 @@ def images_2_feature(X_T_list, arg=[(50, 40), ['pixel'], 0]):
 
     if g_open_debug and 'pixel' in fea_types: 
         from limgs_common import quick_XImage_2_files
-        path = 'data/tmp/'
+        path = 'output/tmp/'
         clear_dir(path, is_del=False)
         X = np.array([fea_t[0][: gray_size[0] * gray_size[1]].reshape(gray_size[0], gray_size[1]) for fea_t in output], dtype='uint8')
         X = np.array([fea_t[0][: feature_size[0] * feature_size[1] * feature_size[2]].reshape(feature_size[0], feature_size[1], feature_size[2]) for fea_t in output], dtype='uint8')
@@ -807,9 +801,6 @@ def small_train(tag, X_train, T_train, X_validation, T_validation, X_test, T_tes
                 max_nb_of_iterations=300, 
                 learning_rate=0.1
             )
-        minibatch_costs, training_costs, validation_costs = costs_vec
-        arrs = (minibatch_costs, training_costs, validation_costs)
-        labels = ('cost minibatches', 'cost training set', 'cost validation set')
     elif train_method == 'grad_desc':
         (cost, terations, costs_vec) = nn.train_grad_desc(
                 X_train,
@@ -819,25 +810,24 @@ def small_train(tag, X_train, T_train, X_validation, T_validation, X_test, T_tes
                 max_nb_of_iterations=1600, 
                 learning_rate=0.1
             )
-        training_costs, validation_costs = costs_vec
-        arrs = (training_costs, validation_costs)
-        labels = ('cost full training set', 'cost validation set')
-    show_array(arrs, labels, title='Decrease of cost over backprop iteration', show_fpath='data/cost_func.jpg')
+
+    # 评估准确率 
+    score = nn.test_accuracy(X_test, T_test)
+    log('score:', score) 
+
+    training_costs, validation_costs = costs_vec
+    arrs = (training_costs, validation_costs)
+    labels = ('cost training set', 'cost validation set')
+    show_array(arrs, labels, title='Decrease of cost over backprop iteration', show_fpath='output/cost_func.jpg')
             
     if  g_open_debug:
          g_debug_cache['costs'] = labels, arrs
-        
-
-    # 评估准确率 
-    test_accuracy = nn.test_accuracy(X_test, T_test)
-    print 'test_accuracy:', test_accuracy   
-
     
     # 预测
     y_test = nn.predict(X_test)
     y_true = np.argmax(T_test, axis=1) 
     y_pred = np.argmax(y_test, axis=1)   
-    show_predict_numbers(y_true, y_pred, show_fpath='data/check.jpg')    
+    show_predict_numbers(y_true, y_pred, show_fpath='output/check.jpg')    
     if save_file is not None:
         str_2_file(nn.to_string(), save_file)
 
@@ -850,7 +840,7 @@ def small_test(load_file, X_test, T_test=None):
     if T_test is not None:
         y_true = np.argmax(T_test, axis=1) 
         y_pred = np.argmax(y_test, axis=1)   
-        show_predict_numbers(y_true, y_pred, show_fpath='data/check.jpg')    
+        show_predict_numbers(y_true, y_pred, show_fpath='output/check.jpg')    
         test_accuracy = nn.test_accuracy(X_test, T_test)
         print 'test_accuracy:', test_accuracy 
         #cv2image_2_file(image_2_cv2image(gray_2_rgb(X_test[0])), 'test1.bmp')
@@ -874,94 +864,6 @@ def test():
         s = nn.to_string()
         nn = NeuronNetwork(create_string=s)
 
-def oneHotEncoder_2_idx(T):
-    return np.argmax(T, axis=1)
-
-def idx_2_oneHotEncoder(T, tag_num=None):
-    if tag_num is None:
-        tag_num = np.max(T) + 1
-    Y = np.zeros((T.shape[0], tag_num))
-    Y[np.arange(len(Y)), T] += 1
-    #for i in range(len(T)):
-    #    Y[i, T[i]] = 1
-    return Y
-
- 
-def show_nn_iterations(X, Ys, T, label_arr, costs_arr, path='data/'):
-    """
-    X是图像数据集, 矩阵为 n, c, r, channel或者n, c, r
-    Ys是预测结果的每次迭代的集合
-    T是真实的结果
-    """ 
-    sample_width = 8 #每种小图像的宽度归一化
-    v_max_num = 30 # 每种小图像的个数限制
-    col_num = 30 # 小图像一行显示的个数
-    delt = -1 # 小图像的边框像素宽度
-    iter_delt = 50 # 每隔xx次迭代，显示的迭代次数减半
-    gif_fpath = 'data.train'
-    is_equalization = False 
-    tmp_fpath = 'data/tmp.images_2_gif.bmp'
-
-    from limg_common import equalization_gray_hist, even_random_idxs, gray_2_rgb, rgb_resize, rgb_resize, merge_images, border_image 
-    from lcv2_common import images_2_giffile, file_2_cv2image
-    from plt_common import show_images, show_array, show_predict_numbers  
-
-    #  直方图均衡化
-    if is_equalization: # 必须是灰度图像才有这个操作
-        X = equalization_gray_hist(255 - X, 0, 255)
-       
-    # 按分类随机等量抽样
-    sample_idxs = even_random_idxs(T, v_max_num) # 每个分类小图像随机选择v_max_num个 
-    X = X[sample_idxs]
-    Ys = Ys[:, sample_idxs]
-    T = T[sample_idxs]
-
-    if len(X.shape) == 3:
-        X = gray_2_rgb(X) # 转换为n个rgb图像
-    #X = rgb_resize(X, (None, sample_width))
-
-    iter_images = np.array([merge_images(X, Y, col_num=col_num,  delt=delt) for Y in Ys])
-    #iter_idxs = np.array([i for i in range(0, len(Ys), 2) if i % (int(i / iter_delt) + 1) == 0 or i >= len(Ys) - 30])
-    iter_idxs = np.array([i for i in range(0, len(Ys)) if i % 30 == 0 or i >= len(Ys) - 20])
-    iter_images = iter_images[iter_idxs]
-    images_2_giffile(iter_images, path + gif_fpath + '.image.gif', tmp_fpath=tmp_fpath, duration=0.2)
-
-    iter_images = []
-    for i in iter_idxs:
-        show_array(costs_arr, label_arr, title='Decrease of cost over backprop iteration', show_fpath=tmp_fpath, stop=i)
-        iter_images.append(file_2_cv2image(tmp_fpath))
-    iter_images = np.array(iter_images) 
-    images_2_giffile(iter_images, path + gif_fpath + '.curve.gif', tmp_fpath=tmp_fpath, duration=0.2) 
-
-    iter_images = []
-    for i in iter_idxs:
-        show_predict_numbers(T, Ys[i], show_fpath=tmp_fpath) 
-        iter_images.append(file_2_cv2image(tmp_fpath))   
-    iter_images = np.array(iter_images) 
-    images_2_giffile(iter_images, path + gif_fpath + '.table.gif', tmp_fpath=tmp_fpath, duration=0.2) 
-
-
-def show_nn_iterations_gif(fpath1, fpath2, fpath3, tmp_fpath='tmp.bmp'):
-    """
-    合并多个图像
-    """
-    from lcv2_common import giffile_2_images, images_2_giffile
-    from limg_common import border_image, region_image, rgb_resize
-    image1 = np.array(giffile_2_images(fpath1))
-    sample_image = border_image(image1[0][:, :, :3], 255, delt=4)
-    l, r, u, d = region_image(sample_image, max_gray=100, delt=5)
-    image1 = image1[:, u: d, l: r, :]
-    image1 = rgb_resize(image1, (400, None))
-
-    image2 = np.array(giffile_2_images(fpath2))
-    sample_image = border_image(image2[0][:, :, :3], 255, delt=4)
-    l, r, u, d = region_image(sample_image, max_gray=100, delt=5)
-    image2 = image2[:, u: d, l: r, :] 
-    image2 = rgb_resize(image2, (400, None))
-
-    image12 = np.concatenate((image1, image2), axis=2)
-    images_2_giffile(image12, gif_fpath=fpath3, tmp_fpath=tmp_fpath, duration=0.2)
-
 
 def main():
 
@@ -972,8 +874,8 @@ def main():
     select = 'train'
     read_shape = (100, 100, 3)
 
-    train_method='grad_desc'
     train_method='random_grad_desc'
+    train_method='grad_desc'
     
     expand_num = 2 # 非0样本扩充图片的数量
     fea_types = ['pixel'] # 可以取值['pixel', 'hist', 'rgb_hist']
@@ -1025,8 +927,12 @@ def main():
 
         # 三层神经网络
         small_train(tag, X_train, T_train, X_validation, T_validation, X_test, T_test, num1, num2, train_method=train_method, save_file='tmp.simple_nn.txt')
+
     if select == 'predict':
+        # 从文件中反序列化神经网络
         small_test('tmp.simple_nn.txt', X_test, T_test)
+
+    # 展示神经网络训练动态过程
     if g_debug_cache != {} and 'Y_validation' in g_debug_cache:
         cache = g_debug_cache['Y_validation']
         from limg_common import gray_2_rgb, equalization_gray_hist
@@ -1035,15 +941,8 @@ def main():
         T_show = np.argmax(T_validation, axis=1) # 单值模式
         Y_shows = np.array([np.argmax(v, axis=1) for v in cache])
         labels_arr, costs_arr = g_debug_cache['costs']
-        show_nn_iterations(X_show, Y_shows, T_show, labels_arr, costs_arr, path='data/')
-
-        fpath1 = 'data/data.train.image.gif'
-        fpath2 = 'data/data.train.curve.gif'
-        fpath3 = 'data/data.train.table.gif'
-        fpath12 = 'data/data.train.curve_image.gif'
-        fpath23 = 'data/data.train.curve_table.gif'
-        #show_nn_iterations_gif(fpath2, fpath1, fpath12)
-        #show_nn_iterations_gif(fpath2, fpath3, fpath23)
+        from nn_visual import show_nn_iterations
+        show_nn_iterations(X_show, Y_shows, T_show, labels_arr, costs_arr, path='output/')
 
 
 if __name__ == "__main__":

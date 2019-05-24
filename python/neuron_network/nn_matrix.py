@@ -44,15 +44,18 @@ def string_2_matrix(string):
     return np.fromstring(base64.b64decode(matrix_shape[0])).reshape(matrix_shape[1])
 
 
-def accuracy_score(y_true, y_pred):    
+def calc_accuracy_score(y_true, y_pred):    
     diff = y_true == y_pred 
     score = float(len(diff[diff == True])) / len(diff)
+
+    #from sklearn import metrics
+    #score = metrics.accuracy_score(y_true, y_pred)
     # 准确率, 代替sklearn.metrics.accuracy_score
     # 等价于sklearn.metrics.recall_score(y_true, y_pred, average='weighted')
     # 等价于sklearn.metrics.recall_score(y_true, y_pred, average='micro')
     return score
 
-def recall_score(y_true, y_pred):
+def calc_recall_score(y_true, y_pred):
     categorys = {}
     for c in y_true:
         categorys.setdefault(c, 0)
@@ -69,14 +72,32 @@ def recall_score(y_true, y_pred):
     macro_score = macro_score / len(categorys) # sklearn.metrics.recall_score(y_true, y_pred, average='macro')
     return macro_score, category_2_score
 
-def confusion_matrix(y_true, y_pred):
+def calc_confusion_matrix(y_true, y_pred):
     categorys = list(set([v for v in y_true]))
-    m = {} 
-    for c1 in y_true:
-        for c2 in y_pred:
-            m.setdefault((c1, c2), 0)
-            m[(c1, c2)] += 1
-    return m, categorys
+    m = {} # key = 真实值, 检测值
+    for c1, c2 in zip(list(y_true), list(y_pred)):
+        m.setdefault((c1, c2), 0)
+        m[(c1, c2)] += 1
+    categorys.sort()
+    arr = []
+    for c1 in categorys:
+        arr.append([m[(c1, c2)] if (c1, c2) in m else 0 for c2 in categorys])
+    
+    return arr, categorys
+
+
+def oneHotEncoder_2_idx(T):
+    return np.argmax(T, axis=1)
+
+def idx_2_oneHotEncoder(T, tag_num=None):
+    if tag_num is None:
+        tag_num = np.max(T) + 1
+    Y = np.zeros((T.shape[0], tag_num))
+    Y[np.arange(len(Y)), T] += 1
+    #for i in range(len(T)):
+    #    Y[i, T[i]] = 1
+    return Y
+
 
 # https://blog.csdn.net/CherDW/article/details/55813071
 def test(tag):
@@ -88,10 +109,11 @@ def test(tag):
         print '-->micro.recall_score:', metrics.recall_score(y_true, y_pred, average='micro') 
         print '-->weighted.recall_score:', metrics.recall_score(y_true, y_pred, average='weighted') 
         print '-->macro.recall_score:', metrics.recall_score(y_true, y_pred, average='macro')
-        print '-->accuracy_score:', accuracy_score(y_true, y_pred)
-        print '-->recall_score:', recall_score(y_true, y_pred)
+        print '-->accuracy_score:', calc_accuracy_score(y_true, y_pred)
+        print '-->recall_score:', calc_recall_score(y_true, y_pred)
         print '-->confusion_matrix:', metrics.confusion_matrix(y_true, y_pred, labels=list(set([v for v in y_true])))
-        print '-->confusion_matrix:',  confusion_matrix(y_true, y_pred)
+        print '-->confusion_matrix:', calc_confusion_matrix(y_true, y_pred)
+        print '-->confusion_matrix:', metrics.confusion_matrix(y_true, y_pred, labels=None)
     elif tag == 'file_matrix' or tag == 'all':
         W = np.random.randn(64, 20) * 0.1
         str_2_file(matrix_2_string(W), '64x20.randn.txt')
