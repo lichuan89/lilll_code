@@ -93,6 +93,28 @@
             show_chart(option, domid)
         } 
 </script>
+    <script type="text/javascript">
+        function change(){
+            var show_analysis_data_label = document.getElementById("show_analysis_data_label");
+            show_analysis_data_label.innerHTML = '';
+            var c_u_ids = document.getElementsByName("show_analysis_data_id");
+            var str = '选中id: ';
+            hit = 0
+            for (var i = 0; i < c_u_ids.length; i++) {
+                if (c_u_ids[i].checked) {
+                    str += c_u_ids[i].value;
+                    str += "    ";
+                    hit += 1;
+                }
+            }
+            p = hit / c_u_ids.length
+            p = '' + p
+            hit = '' + hit
+            n = '' + c_u_ids.length
+            str = '总数: ' + n + '<br>选中: ' + hit + '<br>命中率: ' + p + '<br>' + str
+            show_analysis_data_label.innerHTML = str;
+        }
+    </script>
 <script>
 
     // String函数
@@ -120,7 +142,7 @@
         xhr.onreadystatechange = function () {
             if (xhr.readyState == 4) { // 读取完成
                 if (xhr.status == 200) {
-                    console.log("ajax response. url:%s, req:%s, res:%s", url, req_data, xhr.responseText)
+                    console.log("ajax response. url:%s, res:%s, res:%s", url, req_data, xhr.responseText)
                     callback(url, req_data, xhr.responseText)
                 }
             }
@@ -140,7 +162,9 @@
         html += ' --> '
         html += '<a href="' + output_url + '" target="_blank">输出链接</a><br>'
         if (req_data.split("\n")[0].indexOf("print_html_chart") == -1) {
-            context = context.replace(/\n/g, "<br>")
+            if (req_data.split("\n")[0].indexOf("print_html") == -1) {
+                context = context.replace(/\n/g, "<br>") //  输出文本
+            }
             html += context
             oDiv.innerHTML= html;
         } else {
@@ -152,7 +176,7 @@
     function OnButton(){
         // 从html元素中获取请求内容
         var input = document.getElementById("input_area").value;
-        var response = ajax_request("/ajax", input, show_output)
+        var response = ajax_request("/cmd_ajax", input, show_output)
     }
 
 </script>

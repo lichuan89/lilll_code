@@ -12,9 +12,59 @@ import re
 import sys
 import time
 import datetime
+import random
+import urllib
 from lcommon import str_2_json
 from lcommon import json_2_str
 from lprocess_line import *
+
+
+def quote_url(tag):
+    idx = int(tag[0])
+    is_quote = tag[1]
+    for line in sys.stdin:
+        line = line[:-1]
+        arr = line.split('\t')
+        arr[idx] = urllib.quote(arr[idx]) if is_quote == 'quote' else urllib.unquote(arr[idx])
+        print '\t'.join(arr)
+
+
+def random_line(arg=[0.01, 0]):
+    prob_thre, min_thre = arg
+    prob_thre, min_thre = float(prob_thre), float(min_thre)
+    cache = []
+    cnt = 0
+    for line in sys.stdin:
+        line = line[:-1]
+        prob = random.random()
+        if prob < float(prob_thre):
+            cnt += 1
+            print line
+        elif len(cache) + cnt < min_thre:
+            cache.append(line)
+    if cnt < min_thre:
+        for line in cache:
+            print line
+
+
+def random_line_limit_num(num):
+    num = float(num[0])
+    lines = []
+    for line in sys.stdin:
+        line = line[:-1]
+        lines.append(line)
+    count = len(lines)
+    if count != 0:
+        thre = num / count
+    else:
+        thre = 0
+    if thre >= 1:
+        thre = 1
+    for line in lines:
+        prob = random.random()
+        if prob < thre:
+            print line
+
 
 def select_fields(tags):
     idxs = [int(idx) for idx in tags]
@@ -47,34 +97,10 @@ def print_html_table():
         i += 1
     print '</table>'
     
-def print_html_image(tags):
+def print_html_attr(tags):
     types = dict([(i, tags[i]) for i in range(0, len(tags))])
-    print '''
-    <script type="text/javascript">
-        function change(){
-            var show_analysis_data_label = document.getElementById("show_analysis_data_label");
-            show_analysis_data_label.innerHTML = '';
-            var c_u_ids = document.getElementsByName("show_analysis_data_id");
-            var str = '选中prodId: ';
-            hit = 0
-            for (var i = 0; i < c_u_ids.length; i++) {
-                if (c_u_ids[i].checked) {
-                    str += c_u_ids[i].value;
-                    str += "    ";
-                    hit += 1;
-                }
-            }
-            p = hit / c_u_ids.length
-            p = '' + p
-            hit = '' + hit
-            n = '' + c_u_ids.length
-            str = '总数: ' + n + '<br>选中: ' + hit + '<br>命中率: ' + p + '<br>' + str
-            show_analysis_data_label.innerHTML = str;
-        }
-    </script>
-    <div>
-    '''
-    i = 0
+    print '<div>'
+    j = 0
     for line in sys.stdin:
         line = line[:-1]
         line = line.decode('utf8', 'ignore')
@@ -83,8 +109,8 @@ def print_html_image(tags):
         imgs = [fields[i] for i, t in types.items() if t == 'image']
         urls = [fields[i] for i, t in types.items() if t == 'url']
         texts = [fields[i] for i, t in types.items() if t == 'text']
-        key = keys[0] if len(keys) > 0 else i
-        i += 1
+        key = keys[0] if len(keys) > 0 else j
+        j += 1
         key_html = '<label>%s<input type="checkbox" name="show_analysis_data_id" value="%s" onclick="change()"/></label>' % (key, key)
 
         url_html = '|'.join(['<a href="%s">%s</a>' % (url, url[:15]) for url in urls])
@@ -93,13 +119,44 @@ def print_html_image(tags):
 
         img_html = []
         for v in imgs: 
-            red = ' style="border:3px solid #ff0000" ' if v.find("select_color=1") != -1 else ' style="border:3px solid #000000" '
+            red = ' style="border:3px solid #ff0000" ' if v.find("select_color=1") == -1 else ' style="border:3px solid #000000" '
             img_html.append('<img src="%s" width=150  %s />' % (v, red))
         img_html = '\t'.join(img_html)
         output = [key_html, img_html, url_html, text_html, '<hr>'] 
         print '\t'.join(output).encode('utf8', 'ignore')
     print '<hr><label id = "show_analysis_data_label" style="width: 1000px; height: 100px;"></label>'
     print '</div>'
+
+
+def print_html_image(tag=[5, 150]):
+    """  
+    mapper_prod_stream
+    """  
+    col_num, width = int(tag[0]), int(tag[1])
+    lines = {}   
+    j = 0  
+    for line in sys.stdin:
+        line = line[:-1]
+        image, name, idx = line.split('\t')
+
+        lines.setdefault(j, [])  
+        if len(lines[j]) >= col_num:
+            j += 1 
+        lines.setdefault(j, [])  
+        lines[j].append((image, name, idx))
+    print '''  
+        <style type="text/css">
+        table td{ height:10px; width:%d; font-size:5px}
+        </style>
+        ''' % width
+    print '<table border="0.1" border-spacing:0px  cellspacing="0" cellpadding="0">'
+    for i in range(0, j + 1):  
+        arr = lines[i]
+        th = ['<th><img src="%s" width=%d style="border:3px solid #ff0000" /></th>' % (v[0], width) for v in arr]   
+        td = ['<td><label><input type="checkbox" name="show_analysis_data_id" value="%s" onclick="change()"/>%s</label></td>' % (v[2], v[1]) for v in arr]   
+        print '<tr>%s</tr> <tr>%s</tr>\n' % (''.join(th), ''.join(td))
+    print '</table>'
+    print '<hr><label id = "show_analysis_data_label" style="width: 1000px; height: 100px;"></label>'
 
 
 if __name__ == "__main__":

@@ -112,9 +112,9 @@ func main() {
     fs := http.FileServer(http.Dir("static/"))
     http.Handle("/static/", http.StripPrefix("/static/", fs))
 
-    http.HandleFunc("/", HomePage)
-    http.HandleFunc("/ajax", OnAjax)
-
+    http.HandleFunc("/markdown", MarkDown)
+    http.HandleFunc("/cmd", Cmd)
+    http.HandleFunc("/cmd_ajax", CmdAjax)
     err := http.ListenAndServe(IP + ":" + HTTP_PORT, nil)
     if err != nil {
         fmt.Println("服务失败 /// ", err)
@@ -135,8 +135,22 @@ func WriteTemplateToHttpResponse(res http.ResponseWriter, t *template.Template) 
     return err
 }
 
-func HomePage(res http.ResponseWriter, req *http.Request) {
+func Cmd(res http.ResponseWriter, req *http.Request) {
     t, err := template.ParseFiles("static/html/cmd.html")
+    if err != nil {
+        fmt.Println(err)
+        return
+    }
+    err = WriteTemplateToHttpResponse(res, t)
+    if err != nil {
+        fmt.Println(err)
+        return
+    }
+}
+
+
+func MarkDown(res http.ResponseWriter, req *http.Request) {
+    t, err := template.ParseFiles("static/html/markdown.html")
     if err != nil {
         fmt.Println(err)
         return
@@ -157,8 +171,7 @@ func exec_shell(s string) (string, error){
     return out.String(), err 
 }
 
-
-func OnAjax(res http.ResponseWriter, req *http.Request) {
+func CmdAjax(res http.ResponseWriter, req *http.Request) {
     str, _ := ioutil.ReadAll(req.Body)
     s := string(str)
     arr := strings.Split(s, "\n")
@@ -172,7 +185,7 @@ func OnAjax(res http.ResponseWriter, req *http.Request) {
 
     id := fmt.Sprintf("%s_%s_%d", strings.Replace(cmd, "|", "__", -1), GetNowTime(), GetGID)
     input_fpath := fmt.Sprintf("static/temp/%s.input.txt", id)
-    output_fpath := fmt.Sprintf("static/temp/%s.output.txt", id)
+    output_fpath := fmt.Sprintf("static/temp/%s.output.html", id)
     input_url := fmt.Sprintf("/%s", input_fpath)
     output_url := fmt.Sprintf("/%s", output_fpath)
 
