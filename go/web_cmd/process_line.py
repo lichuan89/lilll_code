@@ -19,6 +19,26 @@ from lcommon import json_2_str
 from lprocess_line import *
 
 
+def rsearch(tag):
+    rule = tag[0].decode('utf8', 'ignore')
+    idx = tag[1] if len(tag) >= 2 else 'all'
+    for line in sys.stdin:
+        line = line[:-1].decode('utf8', 'ignore')
+        arr = line.split('\t')
+        v = line if idx == 'all' else arr[int(idx)]
+        if re.search(rule, v) is not None: 
+            print '\t'.join(arr).encode('utf8', 'ignore')
+
+def rrsearch(tag):
+    rule = tag[0].decode('utf8', 'ignore')
+    idx = tag[1] if len(tag) >= 2 else 'all'
+    for line in sys.stdin:
+        line = line[:-1].decode('utf8', 'ignore')
+        arr = line.split('\t')
+        v = line if idx == 'all' else arr[int(idx)] 
+        if re.search(rule, v) is None: 
+            print '\t'.join(arr).encode('utf8', 'ignore')
+
 def quote_url(tag):
     idx = int(tag[0])
     is_quote = tag[1]
@@ -137,7 +157,12 @@ def print_html_image(tag=[5, 150]):
     j = 0  
     for line in sys.stdin:
         line = line[:-1]
-        image, name, idx = line.split('\t')
+        arr = line.split('\t')
+        if len(arr) >= 3:
+            image, name, idx = arr 
+        else:
+            image, name = arr
+            idx = name
 
         lines.setdefault(j, [])  
         if len(lines[j]) >= col_num:
