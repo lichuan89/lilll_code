@@ -5,6 +5,7 @@
 package main
 
 import (
+    "regexp"
     "bytes"
     "errors"
     "fmt"
@@ -13,6 +14,7 @@ import (
     "io"
     "io/ioutil"
     "net/http"
+    "net"
     "runtime"
     "strings"
     "bufio"
@@ -23,9 +25,24 @@ import (
 )
 
 const (
-    IP string = "localhost"
+    IP string = "127.0.0.1"
     HTTP_PORT  string = "8000"
 )
+
+func GetIP() string {
+    addrs, err := net.InterfaceAddrs()
+    if err != nil{
+        return ""
+    }   
+    for _, value := range addrs{
+        if ipnet, ok := value.(*net.IPNet); ok && !ipnet.IP.IsLoopback(){
+            if ipnet.IP.To4() != nil{
+                return ipnet.IP.String()
+            }   
+        }   
+    }   
+    return ""
+}
 
 func GetNowTime() string {
     // 返回当前时刻，格式为[年 月 日 时 分 秒]，如 20190515070850
@@ -183,11 +200,15 @@ func CmdAjax(res http.ResponseWriter, req *http.Request) {
     context := strings.Join(arr[3:], "\n")
     fmt.Printf("process input.cmd:[%s], sep:[%s], fpath:[%s], context:[%s]\n", cmd, sep, fpath, context)
 
-    id := fmt.Sprintf("%s_%s_%d", strings.Replace(cmd, "|", "__", -1), GetNowTime(), GetGID)
+    rule, _ := regexp.Compile("[^a-zA-Z0-9_]")
+    id := rule.ReplaceAllString(cmd, "____");
+    id = fmt.Sprintf("%s_%s_%d", id, GetNowTime(), GetGID)
+
     input_fpath := fmt.Sprintf("static/temp/%s.input.txt", id)
     output_fpath := fmt.Sprintf("static/temp/%s.output.html", id)
-    input_url := fmt.Sprintf("/%s", input_fpath)
-    output_url := fmt.Sprintf("/%s", output_fpath)
+    url := fmt.Sprintf("http://%s:%s", IP, HTTP_PORT) 
+    input_url := fmt.Sprintf("%s/%s", url, input_fpath)
+    output_url := fmt.Sprintf("%s/%s", url, output_fpath)
 
     if sep != "" {
         context = strings.Replace(context, sep, "\t", -1)

@@ -7,7 +7,19 @@
 cmd="$1"
 output_fpath="$2"
 
-cmd=$( echo "$cmd" | awk -F"|" '{for(i=1;i<=NF;i++) s = s "python process_line.py "$i" | ";}END{s = s" cat";  print s}')
+cmd=$( echo "$cmd" | awk -F"|" '{
+        for(i=1;i<=NF;i++) {
+            if (index($i, ":") != 1) { 
+                s = s "python process_line.py "$i" | ";
+            } else {
+                cmd = substr($i, 2);
+                s = s cmd " |"; 
+            }
+        }
+    }END{
+        s = s" cat"; 
+        print s
+    }')
 
 echo "$cmd > $output_fpath" > $output_fpath.sh
 /bin/bash $output_fpath.sh
