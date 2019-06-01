@@ -188,6 +188,22 @@ func exec_shell(s string) (string, error){
     return out.String(), err 
 }
 
+func parse_cmd(cmd string) string {
+    arr := strings.Split(cmd, "|")
+    cmds := [] string{}
+    for _, v := range arr{
+        if v[: 1] == ":" {
+            fmt.Println(v[: 1]) 
+            cmds = append(cmds, v[1: ])
+        } else {
+            s := fmt.Sprintf("python process_line.py %s", v)  
+            cmds = append(cmds, s)
+        }   
+    }   
+    cmd = strings.Join(cmds, "|") 
+    return cmd
+}
+
 func CmdAjax(res http.ResponseWriter, req *http.Request) {
     str, _ := ioutil.ReadAll(req.Body)
     s := string(str)
@@ -215,12 +231,13 @@ func CmdAjax(res http.ResponseWriter, req *http.Request) {
     }
    
     script := "" 
+    cmd = parse_cmd(cmd)
     if fpath != "" {
-        script = fmt.Sprintf("wget '%s' -O %s &&  cat %s | /bin/bash -x cmd.sh '%s' '%s'", fpath, input_fpath, input_fpath, cmd, output_fpath) 
+        script = fmt.Sprintf("wget '%s' -O %s &&  cat %s | %s >  %s", fpath, input_fpath, input_fpath, cmd, output_fpath) 
     } else {
         fmt.Printf("write input file. path:[%s], context:[%s]\n", input_fpath, context)
         Str_2_file(context, input_fpath)
-        script = fmt.Sprintf("cat %s | /bin/bash -x cmd.sh '%s' '%s'", input_fpath, cmd, output_fpath) 
+        script = fmt.Sprintf("cat %s | %s > %s", input_fpath, cmd, output_fpath) 
     }
     fmt.Printf("run script. cmd:[%s]\n", script)
     r, _ := exec_shell(script)
