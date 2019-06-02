@@ -1,3 +1,78 @@
+
+function set_pie_option(data){
+    var title = data[0][0]
+    var len = data[0].length
+    var x =data[0].splice(1, len) // 类别 
+    var tag = []
+    var ys = []
+    for (var i = 1; i < data.length; i++) {
+        tag[i - 1] = data[i][0] // 时间轴
+        categorys = []
+        for (var j = 1; j < data[i].length; j++) {
+            categorys[j - 1] = {value: parseFloat(data[i][j]),  name:x[j - 1]}
+        }
+        ys[i - 1] = {
+                name: title, 
+                type:'pie',
+                center: ['50%', '45%'],
+                radius: '50%',
+                data:  categorys
+        }
+    }
+
+    // 指定图表的配置项和数据
+    var option = {
+        timeline : {
+            data : tag, 
+        },
+        options : [
+            {
+                title : {
+                    text: title,
+                    subtext: ''
+                },
+                tooltip : {
+                    trigger: 'item',
+                    formatter: "{a} <br/>{b} : {c} ({d}%)"
+                },
+                legend: {
+                    data: x
+                },
+                toolbox: {
+                    show : true,
+                    feature : {
+                        mark : {show: true},
+                        dataView : {show: true, readOnly: false},
+                        magicType : {
+                            show: true, 
+                            type: ['pie', 'funnel'],
+                            option: {
+                                funnel: {
+                                    x: '25%',
+                                    width: '50%',
+                                    funnelAlign: 'left',
+                                    max: 1700
+                                }
+                            }
+                        },
+                        restore : {show: true},
+                        saveAsImage : {show: true}
+                    }
+                },
+                series : [ ys[0]]
+            },
+            //{
+            //    series : ys.splice(1, ys.length) 
+            //}
+        ]
+    };
+    for (var i = 1; i < ys.length; i++) {
+        option['options'][i] = {series: [ys[i]]}
+    }
+    console.log('set pie chart. json:', JSON.stringify(option)) 
+    return option; 
+}
+
 function set_chart_option(data){
     var title = data[0][0]
     var len = data[0].length
@@ -54,6 +129,7 @@ function set_chart_option(data){
     };
     return option; 
 }
+
 function show_chart(arg, domid){
     // 基于准备好的dom，初始化echarts实例
     var myChart = echarts.init(document.getElementById(domid));
@@ -63,10 +139,15 @@ function show_chart(arg, domid){
     myChart.setOption(arg);
 }
 
-function str_2_chart(str, domid){
+function str_2_chart(str, tag, domid){
     //var str = "某楼盘销售\t周一\t周二\t周三\n意向\t1320\t1132\t601\n预购\t30\t182\t434\n成交\t10\t12\t21"
     var data = str_2_arr(str)
-    var option = set_chart_option(data)
+    var option = ""
+    if (tag == "curve") {
+        option = set_chart_option(data)
+    } else if (tag == "pie") {
+        option = set_pie_option(data)
+    }
     show_chart(option, domid)
 } 
 

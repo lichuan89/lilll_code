@@ -86,13 +86,36 @@ def random_line_limit_num(num):
             print line
 
 
-def select_fields(tags):
+def select_idx(tags):
     idxs = [int(idx) for idx in tags]
     for line in sys.stdin:
         line = line[:-1].decode('utf8')
         arr = line.split('\t')
         output = [arr[idx] for idx in idxs]
         print '\t'.join(output).encode('utf8', 'ignore')
+
+
+def select_field(tags):
+    keys = {} 
+    for line in sys.stdin:
+        line = line[:-1].decode('utf8')
+        arr = line.split('\t')
+        if keys == {}:
+            for i in range(len(arr)):
+                keys[arr[i]] = i
+        output = [arr[keys[k]] for k in tags]
+        print '\t'.join(output).encode('utf8', 'ignore')
+
+
+def transpose():
+    arrs = [] 
+    for line in sys.stdin:
+        line = line[:-1]
+        arr = line.split('\t')
+        arrs.append(arr)
+    for i in range(len(arrs[0])):
+        arr = [v[i] for v in arrs]
+        print '\t'.join(arr)
 
 def add_empty_head(tags=[1]):
     n = int(tags[0]) 
@@ -237,7 +260,7 @@ if __name__ == "__main__":
             eval(func)()
         else:
             func = arr[0]
-            arg = arr[1:]
+            arg = [v.decode('utf8', 'ignore') for v in arr[1:]]
             eval(func)(arg)
     except Exception as e: 
         cat()

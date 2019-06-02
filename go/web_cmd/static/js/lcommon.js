@@ -55,14 +55,16 @@ function show_output(url, req_data, res_data) {
     var html = '<a href="' + input_url + '" target="_blank">输入链接</a>'
     html += ' --> '
     html += '<a href="' + output_url + '" target="_blank">输出链接</a><br>'
-    if (req_data.split("\n")[0].indexOf("print_html_chart") == -1) {
-        if (req_data.split("\n")[0].indexOf("print_html") == -1) {
-            context = context.replace(/\n/g, "<br>") //  输出文本
+    var cmd = req_data.split("\n")[0]
+    if (cmd.indexOf("print_curve") != -1) {
+        str_2_chart(context, "curve", "output_html")
+    } else if (cmd.indexOf("print_pie") != -1) {
+        str_2_chart(context, "pie", "output_html")
+    } else {
+        if (cmd.indexOf("print_html_") != -1) { 
+            context = context.replace(/\n/g, "<br>")
         }
         html += context
         oDiv.innerHTML= html;
-    } else {
-        str_2_chart(context, "output_html")
-    }
-
+    } 
 }
