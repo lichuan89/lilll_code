@@ -26,6 +26,21 @@ import fcntl
 g_open_log = True 
 g_current_time = None
 
+
+g_top_host_postfix = (
+            '.co.kr', '.co.in', '.co.jp', '.com.ag', '.com.br', '.com.bz', '.com.cn',
+            '.com.co', '.com.es', '.com.hk', '.com.mx', '.com.tw', '.co.nz',
+            '.co.uk', '.edu.cn', '.firm.in', '.gen.in', '.idv.tw', '.ind.in',
+            '.me.uk', '.net.ag', '.net.br', '.net.bz', '.net.cn', '.net.co',
+            '.net.in', '.net.nz', '.nom.co', '.nom.es', '.org.ag', '.org.cn',
+            '.org.es', '.org.in', '.org.nz', '.org.tw', '.org.uk', '.ag', '.top',
+            '.am', '.asia', '.at', '.be', '.biz', '.bz', '.ca', '.cc', '.cn',
+            '.co', '.com', '.de', '.es', '.eu', '.fm', '.fr', '.gs', '.hk',
+            '.in', '.info', '.io', '.it', '.jobs', '.jp', '.la', '.me',
+            '.mobi', '.ms', '.mx', '.net', '.nl', '.nu', '.org', '.se',
+            '.tc', '.tk', '.tv', '.tw', '.us', '.vg', '.ws', '.xxx')
+
+
 def log(*arg):
     """
     write_log
@@ -132,6 +147,57 @@ def md5(ustring):
     return token
 
 
+def get_domains(url):
+    """
+    such as: 
+    https://list.jd.com/list.html?cat=9987,653,655
+    http://item.jd.com/100001009384.html
+
+    # 返回domain列表，最后一个domain是最宽泛的 
+    """
+    arr = url.split("/")
+    if len(arr) >= 3:
+        url = arr[2].split('?')[0]
+    regx = r'([^\.]+[.])?([^\.]+)(' + \
+            '|'.join([h.replace('.', r'\.') for h in g_top_host_postfix]) + ')\\b'
+    pattern = re.compile(regx, re.IGNORECASE)
+    m = pattern.findall(url)
+    if m:
+        arr = [] 
+        for elem in m:
+            arr.append(''.join(elem))
+            if elem[0] != '' and len(elem) > 1: 
+                arr.append(''.join(elem[1:]))
+        return arr 
+    else:   
+        return [domain]
+
+
+def expand_json(obj, path=[]):
+    def merge_dict(o1, o2):
+        return dict([v for v in o1.items()] + [v for v in o2.items()])
+
+    kvs = {}
+    kns = {}
+    path_key = '____'.join(path)
+    if type(obj) == dict:
+        for k, v in obj.items():
+            o1, o2 = expand_json(v, path + [k])
+            kvs = merge_dict(kvs, o1)
+            kns = merge_dict(kns, o2)
+        kns['%s____dict' % path_key] = len(obj)
+    elif type(obj) == list:
+        for i in range(len(obj)):
+            o1, o2 = expand_json(obj[i], path + [unicode(i)])
+            kvs = merge_dict(kvs, o1)
+            kns = merge_dict(kns, o2)
+        kns['%s____list' % path_key] = len(obj)
+    else:
+        kvs[path_key] = obj
+
+    return kvs, kns 
+
+
 def test(opt):
     if opt == "file_opt" or opt == "all":
         clear_dir('tmp.muti_process')
@@ -139,6 +205,17 @@ def test(opt):
         str_2_file('abcd\nefg', 'tmp.muti_process/2')
         print read_dir('tmp.muti_process')
         clear_dir('tmp.muti_process')
+    if opt == 'get_domains' or opt == 'all':
+        print get_domains('https://list.jd.com/list.html?cat=9987,653,655')
+
+    if opt == 'expand_json' or opt == 'all':
+        obj = [
+            'v1',
+            {'k2': 'v2', 'k3': 'v3', 'k4': [5, 6]},
+            7
+        ]
+        print obj
+        print expand_json(obj)
 
 if __name__ == "__main__":
     opt = "all"

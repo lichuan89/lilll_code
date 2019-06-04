@@ -16,7 +16,55 @@ import random
 import urllib
 from lcommon import str_2_json
 from lcommon import json_2_str
+from lcommon import str_2_file
+from lcommon import get_domains 
 from lprocess_line import *
+
+
+def process_field(tags, func):
+    idx = int(tags[0])
+    tag = tags[1] if len(tags) >= 2 else 'append'
+    for line in sys.stdin:
+        line = line[: -1].decode('utf8', 'ignore')
+        arr = line.split('\t')
+        v = func(arr[idx])
+        if tag == 'replace':
+            arr[idx] = v
+        else:
+            arr.append(v)
+        print '\t'.join(arr).encode('utf8', 'ignore')
+
+     
+def quote_field(tags):
+    process_field(tags, lambda v: urllib.quote(v))
+
+def unquote_field(tags):
+    process_field(tags, lambda v: urllib.unquote(v))
+
+def domain_field(tags=[0, 'append']):
+    def get_domain(url):
+        domains = get_domains(url)
+        return domains[-1] if domains != [] else ''
+    process_field(tags, func=get_domain)
+
+
+def sum_field(tags):
+    idxs = [int(v) for v in tags]
+    dic = {}
+    for line in sys.stdin:
+        line = line[: -1].decode('utf8', 'ignore')
+        arr = line.split('\t')
+        key = '\t'.join([arr[idx] for idx in range(len(arr)) if idx not in set(idxs)])
+        dic.setdefault(key, {})
+        for idx in idxs:
+            dic[key].setdefault(idx, 0)
+            dic[key][idx] += float(arr[idx])
+        dic[key].setdefault('n', 0)
+        dic[key]['n'] += 1
+    for key, data in dic.items():
+        arr = [key, unicode(data['n'])]
+        arr += [unicode(data[idx]) for idx in idxs]
+        print '\t'.join(arr).encode('utf8', 'ignore')
 
 
 def rsearch(tag):
@@ -39,14 +87,17 @@ def rrsearch(tag):
         if re.search(rule, v) is None: 
             print '\t'.join(arr).encode('utf8', 'ignore')
 
-def quote_url(tag):
-    idx = int(tag[0])
-    is_quote = tag[1]
+def save(tags):
+    fpath = tags[0]
+    if fpath.find('/') == -1:
+        fpath = 'static/temp/%s' % fpath
+
+    lines = []
     for line in sys.stdin:
         line = line[:-1]
-        arr = line.split('\t')
-        arr[idx] = urllib.quote(arr[idx]) if is_quote == 'quote' else urllib.unquote(arr[idx])
-        print '\t'.join(arr)
+        print line 
+        lines.append(line)
+    str_2_file('\n'.join(lines), fpath)
 
 
 def random_line(arg=[0.01, 0]):
@@ -151,6 +202,13 @@ def print_html_table(tags=['']):
     """
     tag = tags[0]
 
+    print '''
+        <link type="text/css" rel="styleSheet"  href="../../static/css/lvisual.css" />
+        <script src="../../static/js/echarts-all.js"></script>
+        <script src="../../static/js/lvisual.js"></script>
+        <script src="../../static/js/lcommon.js"></script>
+
+    '''
     sys.stdout.write('<table class="simpletable">')
     i = 0 if 'K' in tag else 1
     types = [] if 'T' in tag else ['text']
@@ -203,6 +261,14 @@ def print_html_field(tags=['TK', 5, 150, 0, 0]):
     if len(tags) >= 5:
         use_boder = int(tags[4])
 
+
+    print '''
+        <link type="text/css" rel="styleSheet"  href="../../static/css/lvisual.css" />
+        <script src="../../static/js/echarts-all.js"></script>
+        <script src="../../static/js/lvisual.js"></script>
+        <script src="../../static/js/lcommon.js"></script>
+
+    '''
     lines = {}   
     keys = [] if 'K' in tag else ['...'] 
     types = [] if 'T' in tag else ['text']
@@ -263,4 +329,5 @@ if __name__ == "__main__":
             arg = [v.decode('utf8', 'ignore') for v in arr[1:]]
             eval(func)(arg)
     except Exception as e: 
+        print "error:", e
         cat()

@@ -61,7 +61,7 @@ function show_output(url, req_data, res_data) {
     } else if (cmd.indexOf("print_pie") != -1) {
         str_2_chart(context, "pie", "output_html")
     } else {
-        if (cmd.indexOf("print_html_") != -1) { 
+        if (cmd.indexOf("print_html_") == -1) { 
             context = context.replace(/\n/g, "<br>")
         }
         html += context

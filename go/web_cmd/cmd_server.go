@@ -222,6 +222,10 @@ func CmdAjax(res http.ResponseWriter, req *http.Request) {
 
     input_fpath := fmt.Sprintf("static/temp/%s.input.txt", id)
     output_fpath := fmt.Sprintf("static/temp/%s.output.html", id)
+    if strings.Index(cmd, "print_html_") == -1 {
+        output_fpath = fmt.Sprintf("static/temp/%s.output.txt", id)
+    }
+
     url := fmt.Sprintf("http://%s:%s", IP, HTTP_PORT) 
     input_url := fmt.Sprintf("%s/%s", url, input_fpath)
     output_url := fmt.Sprintf("%s/%s", url, output_fpath)
