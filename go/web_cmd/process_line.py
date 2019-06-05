@@ -22,24 +22,59 @@ from lprocess_line import *
 
 
 def process_field(tags, func):
-    idx = int(tags[0])
+    """
+    tags = [序号(a表示全行), 扩展/替换, 解码(none表示不操作), 编码后处理(none表示不操作), 最终编码]
+    """
+    idx = int(tags[0]) if tags[0] != 'a' else tags[0]
     tag = tags[1] if len(tags) >= 2 else 'append'
+    decode = tags[2] if len(tags) >= 3 else 'utf8'
+    encode = tags[3] if len(tags) >= 4 else 'none'
+    last_encode = tags[4] if len(tags) >= 5 else decode
     for line in sys.stdin:
-        line = line[: -1].decode('utf8', 'ignore')
-        arr = line.split('\t')
-        v = func(arr[idx])
+        line = line[: -1]
+        if decode != 'none': 
+            line = line.decode(decode, 'ignore')
+        if idx == 'a':
+            arr = [line]
+            v = func(line)
+        else:
+            arr = line.split('\t')
+            v = arr[idx]
+            if encode != 'none':
+                v = v.encode(encode, 'ignore')
+            v = func(v)
+            if last_encode != 'none':
+                v = v.encode(last_encode, 'ignore')
         if tag == 'replace':
-            arr[idx] = v
+            arr[idx if idx != 'a' else 0] = v
         else:
             arr.append(v)
-        print '\t'.join(arr).encode('utf8', 'ignore')
+        output = '\t'.join(arr)
+        print output
 
-     
+def base64_field(tags=['0', 'replace', 'none', 'none', 'none']):
+    process_field(tags, lambda v: base64.b64encode(v))
+    
+
+def unbase64_field(tags=['0', 'replace', 'none']):
+    process_field(tags, lambda v: base64.b64decode(v))
+
+def encode_field(tags=['0', 'replace', 'none']):
+    process_field(tags, lambda v: v)
+ 
 def quote_field(tags):
     process_field(tags, lambda v: urllib.quote(v))
 
+
 def unquote_field(tags):
     process_field(tags, lambda v: urllib.unquote(v))
+
+
+def gbk_field(tags=['a', 'replace', 'utf8', 'none', 'gbk']):
+    process_field(tags, lambda v: v)
+
+def utf8_field(tags=['a', 'replace', 'gbk', 'none', 'utf8']):
+    process_field(tags, lambda v: v)
 
 def domain_field(tags=[0, 'append']):
     def get_domain(url):
@@ -329,5 +364,5 @@ if __name__ == "__main__":
             arg = [v.decode('utf8', 'ignore') for v in arr[1:]]
             eval(func)(arg)
     except Exception as e: 
-        print "error:", e
         cat()
+        print >> sys.stderr, "failed to parse. err:", e 
