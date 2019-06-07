@@ -52,14 +52,14 @@ def process_field(tags, func):
         output = '\t'.join(arr)
         print output
 
-def base64_field(tags=['0', 'replace', 'none', 'none', 'none']):
+def base64_field(tags=['a', 'replace', 'none', 'none', 'none']):
     process_field(tags, lambda v: base64.b64encode(v))
     
 
-def unbase64_field(tags=['0', 'replace', 'none']):
+def unbase64_field(tags=['a', 'replace', 'none']):
     process_field(tags, lambda v: base64.b64decode(v))
 
-def encode_field(tags=['0', 'replace', 'none']):
+def encode_field(tags=['a', 'replace', 'none']):
     process_field(tags, lambda v: v)
  
 def quote_field(tags):

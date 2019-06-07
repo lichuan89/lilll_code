@@ -217,7 +217,7 @@ func CmdAjax(res http.ResponseWriter, req *http.Request) {
     fmt.Printf("process input.cmd:[%s], sep:[%s], fpath:[%s], context:[%s]\n", cmd, sep, fpath, context)
 
     rule, _ := regexp.Compile("[^a-zA-Z0-9_]")
-    id := rule.ReplaceAllString(cmd, "____");
+    id := rule.ReplaceAllString(cmd, "__");
     id = fmt.Sprintf("%s_%s_%d", id, GetNowTime(), GetGID)
 
     input_fpath := fmt.Sprintf("static/temp/%s.input.txt", id)

@@ -1,0 +1,16 @@
+常用指令	cat|:iconv -f gbk -t utf8|select_idx____4|:awk '{s+=$1;}END{print "平均价格:"s/NR;}'
+
+
+纯文本表格	:head -6|:iconv -f gbk -t utf8|select_idx____0____1____2____3____4____5|print_html_table____K
+
+
+表格	:head -6|:iconv -f gbk -t utf8|select_idx____0____1____2____3____4____5|add_head____image____text____text____url|print_html_table____KT
+
+
+字段	:iconv -f gbk -t utf8|select_idx____0____1____2____3____4____5|add_head____image____text____text____url|print_html_field____KT____4
+
+
+曲线	:head -5|:iconv -f gbk -t utf8|select_idx____1____6____7____8____9____10____11____12|print_curve
+
+
+饼图	:head -5|:iconv -f gbk -t utf8|select_idx____1____6____7____8____9____10____11____12|del_head____1|add_head____sale____1____2____3____4____5____6____7|transpose|print_pie
