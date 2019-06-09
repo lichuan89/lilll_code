@@ -132,7 +132,7 @@ def collect_train_data_2x1y(begin, end, func):
     x = xy[:, 0]
     y = xy[:, 1]
     z = func(x, y)
-    noise_variance = 4 
+    noise_variance = 0.5 
     noise = np.random.randn(x.shape[0]) * noise_variance
     z = z + noise
     return (gx, gy, gz), (x, y, z)

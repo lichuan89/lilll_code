@@ -181,6 +181,26 @@ def select_idx(tags):
         print '\t'.join(output).encode('utf8', 'ignore')
 
 
+def add_index(tags=[0]):
+    begin = int(tags[0])
+    for line in sys.stdin:
+        line = line[:-1]
+        arr = line.split('\t')
+        output = [str(begin)] + arr
+        begin += 1
+        print '\t'.join(output)
+
+def add_const(tags):
+    const = tags[0]
+    idx = int(tags[1]) if len(tags) > 1 else 0
+    for line in sys.stdin:
+        line = line[:-1].decode('utf8')
+        arr = line.split('\t')
+        output = arr[: idx] + [const] + arr[idx: ]
+        print '\t'.join(output).encode('utf8')
+    
+        
+
 def select_field(tags):
     keys = {} 
     for line in sys.stdin:
