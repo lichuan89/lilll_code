@@ -1,4 +1,159 @@
 
+function set_scatter_option(data){
+    // 输入文件第一行: 标题, 类别1,类别2, ...
+    // 输入文件第二行表示第一个散点: 类别1x, 类别1y, 类别2x, 类别2y, ....
+    var option = {
+        title : {
+            text: '男性女性身高体重分布',
+            subtext: '-'
+        },
+        tooltip : {
+            trigger: 'axis',
+            showDelay : 0,
+            formatter : function (params) {
+                if (params.value.length > 1) {
+                    return params.seriesName + ' :<br/>'
+                       + params.value[0] + ' ' 
+                       + params.value[1] + ' ';
+                }
+                else {
+                    return params.seriesName + ' :<br/>'
+                       + params.name + ' : '
+                       + params.value + ' ';
+                }
+            },  
+            axisPointer:{
+                show: true,
+                type : 'cross',
+                lineStyle: {
+                    type : 'dashed',
+                    width : 1
+                }
+            }
+        },
+        legend: {
+            data:['女性','男性', '中性']
+        },
+        toolbox: {
+            show : true,
+            feature : {
+                mark : {show: true},
+                dataZoom : {show: true},
+                dataView : {show: true, readOnly: false},
+                restore : {show: true},
+                saveAsImage : {show: true}
+            }
+        },
+        xAxis : [
+            {
+                type : 'value',
+                scale:true,
+                axisLabel : {
+                    formatter: '{value} '
+                }
+            }
+        ],
+        yAxis : [
+            {
+                type : 'value',
+                scale:true,
+                axisLabel : {
+                    formatter: '{value} '
+                }
+            }
+        ],
+        series : [
+            {
+                name:'女性',
+                type:'scatter',
+                data: [[161.2, 51.6], [167.5, 59.0], [159.5, 49.2]
+                    ],
+                markPoint : {
+                    data : [
+                        {type : 'max', name: '最大值'},
+                        {type : 'min', name: '最小值'}
+                    ]
+                },
+                markLine : {
+                    data : [
+                        {type : 'average', name: '平均值'}
+                    ]
+                }
+            },
+          {
+                name:'中性',
+                type:'scatter',
+                data: [[161.2, 51.6], [167.5, 59.0], [159.5, 49.2]
+                    ],
+                markPoint : {
+                    data : [
+                        {type : 'max', name: '最大值'},
+                        {type : 'min', name: '最小值'}
+                    ]
+                },
+                markLine : {
+                    data : [
+                        {type : 'average', name: '平均值'}
+                    ]
+                }
+            },
+            {
+                name:'男性',
+                type:'scatter',
+                data: [[174.0, 65.6], [175.3, 71.8], [193.5, 80.7],[180.3, 83.2]
+                ],
+                markPoint : {
+                    data : [
+                        {type : 'max', name: '最大值'},
+                        {type : 'min', name: '最小值'}
+                    ]
+                },
+                markLine : {
+                    data : [
+                        {type : 'average', name: '平均值'}
+                    ]
+                }
+            }
+        ]
+    };
+
+    var title = data[0][0]
+    var len = data[0].length
+    var categorys =data[0].splice(1, len) // 类别 
+    var points_arr = []
+
+    option['title']['text'] = title 
+    option['legend']['data'] = categorys
+    option['series'] = [] 
+    for (var i = 0; i < categorys.length; i++) {
+        var points = []
+        for (var j = 1; j < data.length; j++) {
+            x = 2 * i
+            points[j - 1] = [parseFloat(data[j][2 * i]), parseFloat(data[j][2 * i + 1])]
+        }
+        var opt =  {   
+                name: categorys[i],
+                type:'scatter',
+                data: points, 
+                markPoint : { 
+                    data : [ 
+                        {type : 'max', name: '最大值'},
+                        {type : 'min', name: '最小值'}
+                    ]   
+                },  
+                markLine : { 
+                    data : [ 
+                        {type : 'average', name: '平均值'}
+                    ]   
+                }   
+            }
+        option['series'][i] = opt
+    }
+
+    console.log('set scatter chart. json:', JSON.stringify(option)) 
+    
+    return option; 
+}
 function set_pie_option(data){
     var title = data[0][0]
     var len = data[0].length
@@ -147,6 +302,8 @@ function str_2_chart(str, tag, domid){
         option = set_chart_option(data)
     } else if (tag == "pie") {
         option = set_pie_option(data)
+    } else if (tag == "scatter") {
+        option = set_scatter_option(data)
     }
     show_chart(option, domid)
 } 

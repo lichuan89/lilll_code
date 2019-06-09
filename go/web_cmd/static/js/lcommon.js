@@ -56,10 +56,13 @@ function show_output(url, req_data, res_data) {
     html += ' --> '
     html += '<a href="' + output_url + '" target="_blank">输出链接</a><br>'
     var cmd = req_data.split("\n")[0]
+    console.log('print chart. type:', cmd)
     if (cmd.indexOf("print_curve") != -1) {
         str_2_chart(context, "curve", "output_html")
     } else if (cmd.indexOf("print_pie") != -1) {
         str_2_chart(context, "pie", "output_html")
+    } else if (cmd.indexOf("print_scatter") != -1) {
+        str_2_chart(context, "scatter", "output_html")
     } else {
         if (cmd.indexOf("print_html_") == -1) { 
             context = context.replace(/\n/g, "<br>")
