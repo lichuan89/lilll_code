@@ -92,8 +92,9 @@ def oneHotEncoder_2_idx(T):
 def idx_2_oneHotEncoder(T, tag_num=None):
     if tag_num is None:
         tag_num = np.max(T) + 1
+    T = T.reshape(-1, 1)
     Y = np.zeros((T.shape[0], tag_num))
-    Y[np.arange(len(Y)), T] += 1
+    Y[np.arange(len(Y)), T.reshape(-1)] += 1
     #for i in range(len(T)):
     #    Y[i, T[i]] = 1
     return Y

@@ -173,27 +173,31 @@ def get_domains(url):
         return [domain]
 
 
-def expand_json(obj, path=[]):
+def expand_json(obj, is_simple_key=True, path=[]):
     def merge_dict(o1, o2):
         return dict([v for v in o1.items()] + [v for v in o2.items()])
 
     kvs = {}
     kns = {}
-    path_key = '____'.join(path)
+    path_key = '--'.join(path)
     if type(obj) == dict:
         for k, v in obj.items():
-            o1, o2 = expand_json(v, path + [k])
+            o1, o2 = expand_json(v, is_simple_key, path + [k])
             kvs = merge_dict(kvs, o1)
             kns = merge_dict(kns, o2)
-        kns['%s____dict' % path_key] = len(obj)
+        kns['%s--dict' % path_key] = len(obj)
     elif type(obj) == list:
         for i in range(len(obj)):
-            o1, o2 = expand_json(obj[i], path + [unicode(i)])
+            o1, o2 = expand_json(obj[i], is_simple_key, path + [unicode(i)])
             kvs = merge_dict(kvs, o1)
             kns = merge_dict(kns, o2)
-        kns['%s____list' % path_key] = len(obj)
+        kns['%s--list' % path_key] = len(obj)
     else:
-        kvs[path_key] = obj
+        if is_simple_key:
+            kvs[path[-1] if path != [] else ''] = obj
+        else:
+            kvs[path_key] = obj
+        
 
     return kvs, kns 
 
@@ -216,6 +220,7 @@ def test(opt):
         ]
         print obj
         print expand_json(obj)
+        print expand_json(obj, is_simple_key=False)
 
 if __name__ == "__main__":
     opt = "all"

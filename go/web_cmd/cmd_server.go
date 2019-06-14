@@ -196,7 +196,7 @@ func parse_cmd(cmd string) string {
             fmt.Println(v[: 1]) 
             cmds = append(cmds, v[1: ])
         } else {
-            s := fmt.Sprintf("python process_line.py %s", v)  
+            s := fmt.Sprintf("python process_line.py '%s'", v)  
             cmds = append(cmds, s)
         }   
     }   

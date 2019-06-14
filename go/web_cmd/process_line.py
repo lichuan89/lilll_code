@@ -18,6 +18,8 @@ from lcommon import str_2_json
 from lcommon import json_2_str
 from lcommon import str_2_file
 from lcommon import get_domains 
+from lcommon import expand_json
+from lcommon import expand_pair
 from lprocess_line import *
 
 
@@ -51,6 +53,28 @@ def process_field(tags, func):
             arr.append(v)
         output = '\t'.join(arr)
         print output
+
+
+def parse_json(tags):
+    idx = int(tags[0])
+    keys = tags[1].split('^')
+    pair_key = tags[2] if len(tags) >= 4 else ''
+    pair_val = tags[3] if len(tags) >= 4 else ''
+    is_simple_key = (tags[4] == '1') if len(tags) >= 5 else True
+    i = 0 
+    for line in sys.stdin:
+        line = line[:-1].decode('utf8', 'ignore')
+        arr = line.split('\t')
+        obj = str_2_json(arr[idx])
+        if obj is None:
+            continue
+        if pair_key != '':
+            obj = expand_pair(obj, pair_key, pair_val)
+        kvs, kns = expand_json(obj, sep="____", is_simple_key=is_simple_key)
+        vs = [kvs[k] if k in kvs else '' for k in keys]
+        output = arr[: idx] + vs + arr[idx + 1:]
+        print '\t'.join(output).encode('utf8', 'ignore')
+
 
 def base64_field(tags=['a', 'replace', 'none', 'none', 'none']):
     process_field(tags, lambda v: base64.b64encode(v))
@@ -248,6 +272,7 @@ def del_head(tags):
         line = line[:-1]
         print line 
 
+
 def print_html_table(tags=['']):
     """
     第一行表示各列的类型,包括image/url/text,可以只填前n列，后面几列默认为text;
@@ -373,7 +398,7 @@ def print_html_field(tags=['TK', 5, 150, 0, 0]):
 
 
 if __name__ == "__main__":
-    func_arg = sys.argv[1]
+    func_arg = sys.argv[1].strip()
     arr = func_arg.split('____')
     try:
         if len(arr) == 1:
