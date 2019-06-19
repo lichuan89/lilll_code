@@ -273,7 +273,7 @@ def del_head(tags):
         print line 
 
 
-def print_html_table(tags=['']):
+def html_table(tags=['']):
     """
     第一行表示各列的类型,包括image/url/text,可以只填前n列，后面几列默认为text;
     第二行表示各列的列名,该行为空则不展示;
@@ -321,7 +321,7 @@ def print_html_table(tags=['']):
     sys.stdout.write('</table>')
     
 
-def print_html_field(tags=['TK', 5, 150, 0, 0]):
+def html_field(tags=['TK', 5, 150, 0, 0]):
     """
     第一行表示各列的类型,包括image/url/text,可以只填前n列，后面几列默认为text;
     第二行表示各列的列名,该行为空则不展示;
@@ -397,10 +397,614 @@ def print_html_field(tags=['TK', 5, 150, 0, 0]):
     print '<hr><label id = "selecting_cell_label" style="width: 1000px; height: 100px;"></label>'
 
 
+def chart_curve():
+    lines = []
+    for line in sys.stdin:
+        line = line[:-1].decode('utf8')
+        arr = line.split('\t')
+        lines.append(arr)
+
+    option = {
+            "title":{
+                "text":"title0"
+            },
+            "tooltip":{
+                "trigger":"axis"
+            },
+            "legend":{
+                "data":[
+                    "1",
+                    "2"
+                ]
+            },
+            "toolbox":{
+                "show":1,
+                "feature":{
+                    "mark":{
+                        "show":1
+                    },
+                    "dataView":{
+                        "show":1,
+                        "readOnly":0
+                    },
+                    "magicType":{
+                        "show":1,
+                        "type":[
+                            "line",
+                            "bar",
+                            "stack",
+                            "tiled"
+                        ]
+                    },
+                    "restore":{
+                        "show":1
+                    },
+                    "saveAsImage":{
+                        "show":1
+                    }
+                }
+            },
+            "calculable":1,
+            "xAxis":[
+                {
+                    "type":"category",
+                    "boundaryGap":0,
+                    "data":[
+                        "A",
+                        "B",
+                        "C"
+                    ]
+                }
+            ],
+            "yAxis":[
+                {
+                    "type":"value"
+                }
+            ],
+            "series":[
+                {
+                    "name":"1",
+                    "type":"line",
+                    "smooth":1,
+                    "itemStyle":{
+                        "normal":{
+                            "areaStyle":{
+                                "type":"default"
+                            }
+                        }
+                    },
+                    "data":[
+                        "20.1",
+                        "30.2",
+                        "50"
+                    ]
+                },
+                {
+                    "name":"2",
+                    "type":"line",
+                    "smooth":1,
+                    "itemStyle":{
+                        "normal":{
+                            "areaStyle":{
+                                "type":"default"
+                            }
+                        }
+                    },
+                    "data":[
+                        "60.3",
+                        "10",
+                        "100"
+                    ]
+                }
+            ]
+        }
+    option = {
+            "title":{
+                "text":"aaa"
+            },
+            "tooltip":{
+                "trigger":"axis"
+            },
+            "legend":{
+                "data":[
+                    "1",
+                    "2"
+                ]
+            },
+            "toolbox":{
+                "show":1,
+                "feature":{
+                    "mark":{
+                        "show":1
+                    },
+                    "dataView":{
+                        "show":1,
+                        "readOnly":0
+                    },
+                    "magicType":{
+                        "show":1,
+                        "type":[
+                            "line",
+                            "bar",
+                            "stack",
+                            "tiled"
+                        ]
+                    },
+                    "restore":{
+                        "show":1
+                    },
+                    "saveAsImage":{
+                        "show":1
+                    }
+                }
+            },
+            "calculable":1,
+            "xAxis":[
+                {
+                    "type":"category",
+                    "boundaryGap":0,
+                    "data":[
+                        "A",
+                        "B",
+                        "c"
+                    ]
+                }
+            ],
+            "yAxis":[
+                {
+                    "type":"value"
+                }
+            ],
+            "series":[
+                {
+                    "name":"1",
+                    "type":"line",
+                    "smooth":1,
+                    "itemStyle":{
+                        "normal":{
+                            "areaStyle":{
+                                "type":"default"
+                            }
+                        }
+                    },
+                    "data":[
+                        "20.1",
+                        "30.2",
+                        "100"
+                    ]
+                },
+                {
+                    "name":"2",
+                    "type":"line",
+                    "smooth":1,
+                    "itemStyle":{
+                        "normal":{
+                            "areaStyle":{
+                                "type":"default"
+                            }
+                        }
+                    },
+                    "data":[
+                        "60.3",
+                        "30",
+                        "50"
+                    ]
+                }
+            ]
+        }
+    title = lines[0][0]
+    row_names = [arr[0] for arr in lines[1: ]]
+    col_names = lines[0][1: ]
+    option['title']['text'] = title 
+    option['legend']['data'] = row_names
+    option['xAxis'][0]['data'] = col_names
+    series = [
+        {
+            "name": lines[i][0],
+            "type":"line",
+            "smooth":1,
+            "itemStyle": {
+                "normal":{
+                    "areaStyle":{
+                        "type":"default"
+                    }
+                }
+            },
+            "data":lines[i][1: ]
+        } for i in range(1, len(lines))
+    ]
+    option['series'] = series 
+    print json_2_str(option).encode('utf8', 'ignore') 
+    print_chart_js()
+
+def chart_scatter():
+    lines = []
+    for line in sys.stdin:
+        line = line[:-1].decode('utf8')
+        arr = line.split('\t')
+        lines.append(arr)
+
+    option = {
+            "title":{
+                "text":u"男性女性身高体重分布",
+                "subtext":"-"
+            },
+            "tooltip":{
+                "trigger":"axis",
+                "showDelay":0,
+                "axisPointer":{
+                    "show":1,
+                    "type":"cross",
+                    "lineStyle":{
+                        "type":"dashed",
+                        "width":1
+                    }
+                }
+            },
+            "legend":{
+                "data":[
+                    u"女性",
+                    u"男性",
+                    u"中性"
+                ]
+            },
+            "toolbox":{
+                "show":1,
+                "feature":{
+                    "mark":{
+                        "show":1
+                    },
+                    "dataZoom":{
+                        "show":1
+                    },
+                    "dataView":{
+                        "show":1,
+                        "readOnly":0
+                    },
+                    "restore":{
+                        "show":1
+                    },
+                    "saveAsImage":{
+                        "show":1
+                    }
+                }
+            },
+            "xAxis":[
+                {
+                    "type":"value",
+                    "scale":1,
+                    "axisLabel":{
+                        "formatter":"{value} "
+                    }
+                }
+            ],
+            "yAxis":[
+                {
+                    "type":"value",
+                    "scale":1,
+                    "axisLabel":{
+                        "formatter":"{value} "
+                    }
+                }
+            ],
+            "series":[
+                {
+                    "name":u"女性",
+                    "type":"scatter",
+                    "data":[
+                        [
+                            161.2,
+                            51.6
+                        ],
+                        [
+                            167.5,
+                            59
+                        ],
+                        [
+                            159.5,
+                            49.2
+                        ]
+                    ],
+                    "markPoint":{
+                        "data":[
+                            {
+                                "type":"max",
+                                "name":u"最大值"
+                            },
+                            {
+                                "type":"min",
+                                "name":u"最小值"
+                            }
+                        ]
+                    },
+                    "markLine":{
+                        "data":[
+                            {
+                                "type":"average",
+                                "name":u"平均值"
+                            }
+                        ]
+                    }
+                },
+                {
+                    "name":u"中性",
+                    "type":"scatter",
+                    "data":[
+                        [
+                            161.2,
+                            51.6
+                        ],
+                        [
+                            167.5,
+                            59
+                        ],
+                        [
+                            159.5,
+                            49.2
+                        ]
+                    ],
+                    "markPoint":{
+                        "data":[
+                            {
+                                "type":"max",
+                                "name":u"最大值"
+                            },
+                            {
+                                "type":"min",
+                                "name":u"最小值"
+                            }
+                        ]
+                    },
+                    "markLine":{
+                        "data":[
+                            {
+                                "type":"average",
+                                "name":u"平均值"
+                            }
+                        ]
+                    }
+                },
+                {
+                    "name":u"男性",
+                    "type":"scatter",
+                    "data":[
+                        [
+                            174,
+                            65.6
+                        ],
+                        [
+                            175.3,
+                            71.8
+                        ],
+                        [
+                            193.5,
+                            80.7
+                        ],
+                        [
+                            180.3,
+                            83.2
+                        ]
+                    ],
+                    "markPoint":{
+                        "data":[
+                            {
+                                "type":"max",
+                                "name":u"最大值"
+                            },
+                            {
+                                "type":"min",
+                                "name":u"最小值"
+                            }
+                        ]
+                    },
+                    "markLine":{
+                        "data":[
+                            {
+                                "type":"average",
+                                "name":u"平均值"
+                            }
+                        ]
+                    }
+                }
+            ]
+        }
+    categorys = lines[0][1:]
+    option['title']['text'] = lines[0][0]
+    option['legend']['data'] = lines[0][1:]
+    series = [[[lines[i][j], lines[i + 1][j]] for j in range(len(lines[i]))] for i in range(1, len(lines), 2)]
+    option['series'] = [
+            {
+                "data":series[i],
+                "type":"scatter",
+                "name":categorys[i],
+                "markPoint":{
+                    "data":[
+                        {
+                            "type":"max",
+                            "name":u"最大值"
+                        },
+                        {
+                            "type":"min",
+                            "name":u"最小值"
+                        }
+                    ]
+                },
+                "markLine":{
+                    "data":[
+                        {
+                            "type":"average",
+                            "name":u"平均值"
+                        }
+                    ]
+                }
+            } for i in range(len(categorys))]
+
+
+ 
+    print json_2_str(option).encode('utf8', 'ignore') 
+    print_chart_js()
+
+
+def chart_pie():
+    lines = []
+    for line in sys.stdin:
+        line = line[:-1].decode('utf8')
+        arr = line.split('\t')
+        lines.append(arr)
+
+    option = {
+            "timeline":{
+                "data":[
+                    "2015",
+                    "2016"
+                ]
+            },
+            "options":[
+                {
+                    "series":[
+                        {
+                            "radius":"50%",
+                            "type":"pie",
+                            "name":"title0",
+                            "data":[
+                                {
+                                    "name":"name1",
+                                    "value":20.1
+                                },
+                                {
+                                    "name":"name2",
+                                    "value":30.2
+                                }
+                            ],
+                            "center":[
+                                "50%",
+                                "45%"
+                            ]
+                        }
+                    ],
+                    "toolbox":{
+                        "feature":{
+                            "magicType":{
+                                "type":[
+                                    "pie",
+                                    "funnel"
+                                ],
+                                "option":{
+                                    "funnel":{
+                                        "funnelAlign":"left",
+                                        "x":"25%",
+                                        "max":1700,
+                                        "width":"50%"
+                                    }
+                                },
+                                "show":1
+                            },
+                            "restore":{
+                                "show":1
+                            },
+                            "dataView":{
+                                "readOnly":0,
+                                "show":1
+                            },
+                            "saveAsImage":{
+                                "show":1
+                            },
+                            "mark":{
+                                "show":1
+                            }
+                        },
+                        "show":1
+                    },
+                    "legend":{
+                        "data":[
+                            "name1",
+                            "name2"
+                        ]
+                    },
+                    "tooltip":{
+                        "trigger":"item",
+                        "formatter":"{a} <br/>{b} : {c} ({d}%)"
+                    },
+                    "title":{
+                        "text":"title0",
+                        "subtext":""
+                    }
+                },
+                {
+                    "series":[
+                        {
+                            "radius":"50%",
+                            "type":"pie",
+                            "name":"title0",
+                            "data":[
+                                {
+                                    "name":"name1",
+                                    "value":60.3
+                                },
+                                {
+                                    "name":"name2",
+                                    "value":30.4
+                                }
+                            ],
+                            "center":[
+                                "50%",
+                                "45%"
+                            ]
+                        }
+                    ]
+                }
+            ]
+        }
+    title = lines[0][0]
+    col_names = [arr[0] for arr in lines[1: ]] 
+    option['timeline']['data'] = col_names
+    option['options'][0]['title']['text'] = title
+    series = [[{"name": lines[0][col], "value": arr[col]} for col in range(1, len(arr))] for arr in lines[1: ]]
+    series = [
+        {
+            "name": title,
+            "type":"pie",
+            "center":[
+                "50%",
+                "45%"
+            ],
+            "radius":"50%",
+            "data": serie,
+        } for serie in series
+    ]
+    option['options'][0]['legend']['data'] = lines[0][1:] 
+    option['options'][0]['series'] = [series[0]]
+    option['options'][1]['series'] = series[1: ]
+    print json_2_str(option).encode('utf8', 'ignore') 
+    print_chart_js()
+
+def print_chart_js():
+    html = '''
+        <script src="../../static/js/echarts-all.js"></script>
+        <script>
+            window.onload = function() {
+                var dom = document.getElementById('body');
+                var option = JSON.parse(dom.innerHTML.split("\\n")[0]);
+                console.log("json:", option)
+                dom.innerHTML = ""; 
+        
+                var chart_dom =document.createElement("div");
+                chart_dom.setAttribute('style', 'width: 800px;height:400px;');
+        
+                dom.appendChild(chart_dom)
+                var myChart = echarts.init(chart_dom);
+                myChart.setOption(option);
+            };
+        </script>
+        <body id="body">
+        </body>
+    '''
+    print html 
+
 if __name__ == "__main__":
     func_arg = sys.argv[1].strip()
     arr = func_arg.split('____')
-    try:
+    if True: #try:
         if len(arr) == 1:
             func = arr[0]
             eval(func)()
@@ -408,6 +1012,6 @@ if __name__ == "__main__":
             func = arr[0]
             arg = [v.decode('utf8', 'ignore') for v in arr[1:]]
             eval(func)(arg)
-    except Exception as e: 
-        cat()
-        print >> sys.stderr, "failed to parse. err:", e 
+    #except Exception as e: 
+    #    cat()
+    #    print >> sys.stderr, "failed to parse. err:", e 

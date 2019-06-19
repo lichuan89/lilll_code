@@ -91,7 +91,7 @@ func Str_2_file(content string, fileName string) {
     }   
 }
 
-func File_2_str(fileName string) string {
+func File_2_str(fileName string, row_num int) string {
     //创建文件,给与创、写权限，421:读写操
     filePointer, err := os.OpenFile(fileName, os.O_RDONLY, 0751)
     if err != nil {
@@ -103,6 +103,7 @@ func File_2_str(fileName string) string {
  
     reader := bufio.NewReader(filePointer)
     lines := []string {}
+    row := 0
     var readString string
     for {
         readString, err = reader.ReadString('\n')
@@ -115,6 +116,10 @@ func File_2_str(fileName string) string {
             break
         } else {
             log.Println("读取失败，错误：", err)
+            break
+        }
+        row += 1
+        if row_num != -1 && row >= row_num {
             break
         }
     }
@@ -195,6 +200,10 @@ func parse_cmd(cmd string) string {
         if v[: 1] == ":" {
             fmt.Println(v[: 1]) 
             cmds = append(cmds, v[1: ])
+        } else if v[: 1] == "#" {
+            fmt.Println(v[: 1])
+            s := fmt.Sprintf("/bin/bash cmd.sh '%s'", v[1: ])
+            cmds = append(cmds, s)
         } else {
             s := fmt.Sprintf("python process_line.py '%s'", v)  
             cmds = append(cmds, s)
@@ -222,7 +231,7 @@ func CmdAjax(res http.ResponseWriter, req *http.Request) {
 
     input_fpath := fmt.Sprintf("static/temp/%s.input.txt", id)
     output_fpath := fmt.Sprintf("static/temp/%s.output.html", id)
-    if strings.Index(cmd, "print_html_") == -1 {
+    if strings.Index(cmd, "chart_") != 0 && strings.Index(cmd, "html_") != 0{
         output_fpath = fmt.Sprintf("static/temp/%s.output.txt", id)
     }
 
@@ -236,7 +245,9 @@ func CmdAjax(res http.ResponseWriter, req *http.Request) {
    
     script := "" 
     cmd = parse_cmd(cmd)
-    if fpath != "" {
+    if (len(fpath) >= 1 && fpath[: 1] ==  "/") || (len(fpath) >= 2 && fpath[: 2] == "./") { 
+        script = fmt.Sprintf("cat %s | %s >  %s", fpath, cmd, output_fpath)
+    } else if fpath != "" {
         script = fmt.Sprintf("wget '%s' -O %s &&  cat %s | %s >  %s", fpath, input_fpath, input_fpath, cmd, output_fpath) 
     } else {
         fmt.Printf("write input file. path:[%s], context:[%s]\n", input_fpath, context)
@@ -246,7 +257,7 @@ func CmdAjax(res http.ResponseWriter, req *http.Request) {
     fmt.Printf("run script. cmd:[%s]\n", script)
     r, _ := exec_shell(script)
     fmt.Printf("run script. log:[%s]\n", r)
-    ret := File_2_str(output_fpath)
+    ret := File_2_str(output_fpath, 4000)
     fmt.Fprintf(res, "%s\n%s\n%s", input_url, output_url, ret)
     fmt.Printf("response output.cmd:[%s], sep:[%s], fpath:[%s], context:[%s], res:[%s], output_fpath:[%s]\n", cmd, sep, fpath, context, ret, output_url)
 }

@@ -57,14 +57,31 @@ function show_output(url, req_data, res_data) {
     html += '<a href="' + output_url + '" target="_blank">输出链接</a><br>'
     var cmd = req_data.split("\n")[0]
     console.log('print chart. type:', cmd)
-    if (cmd.indexOf("print_curve") != -1) {
+    if (cmd.indexOf("chart_") != -1) {
+        context = context.split("\n")[0];
+        var option = JSON.parse(context);
+        var domid = "output_html";
+        var dom = document.getElementById(domid);
+        dom.innerHTML = "";
+        var file_dom = document.createElement("div");
+        file_dom.innerHTML = html;
+        dom.appendChild(file_dom);
+
+        var chart_dom =document.createElement("div");
+        chart_dom.setAttribute('style', 'width: 800px;height:400px;');
+        dom.appendChild(chart_dom);
+
+        var myChart = echarts.init(chart_dom);
+        console.log("it will show chart:", option);
+        myChart.setOption(option);
+    } else if (cmd.indexOf("print_curve") != -1) {
         str_2_chart(context, "curve", "output_html")
     } else if (cmd.indexOf("print_pie") != -1) {
         str_2_chart(context, "pie", "output_html")
     } else if (cmd.indexOf("print_scatter") != -1) {
         str_2_chart(context, "scatter", "output_html")
     } else {
-        if (cmd.indexOf("print_html_") == -1) { 
+        if (cmd.indexOf("print_html_") == -1 && cmd.indexOf("html_") == 0) { 
             context = context.replace(/\n/g, "<br>")
         }
         html += context

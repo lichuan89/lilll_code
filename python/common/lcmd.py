@@ -98,13 +98,14 @@ def muti_process_stdin(worker, args, batch_line_num, thread_running_num, use_sha
         batch.append(line)
         if len(batch) >= batch_line_num:
             output_lines = muti_process(batch, thread_running_num, worker, args, use_share_path)
-            print '\n'.join(output_lines).encode('utf8', 'ignore')
-            sys.stdout.flush()
+            if output_lines != []:
+                print '\n'.join(output_lines).encode('utf8', 'ignore')
+                sys.stdout.flush()
             batch = []
     if batch != []:
         output_lines = muti_process(batch, thread_running_num, worker, args, use_share_path)
-        print '\n'.join(output_lines).encode('utf8', 'ignore')
-
+        if output_lines != []:
+            print '\n'.join(output_lines).encode('utf8', 'ignore')
 
 def test():
     def worker(lines, args): return ['%s:%d:%s' % (args[0], os.getpid(), line) for line in lines]
