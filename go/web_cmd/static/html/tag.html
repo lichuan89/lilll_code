@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8">
+        <title>卡片(by lichuan89)</title>
+        <style type="text/css">
+            textarea {
+                background: #0b7286;
+                font-size: 15px;
+                border:1px solid #999999;
+                width:100%;
+                margin:5px 0;
+                padding:3px;
+            }
+
+            body {
+                background: #0b7286;
+            }
+            .cardBox {
+                border-radius:5px 5px 5px 5px;
+                background: #ffffff;
+                width: 200px;
+                box-shadow: 0 4px 8px 0 rgba(0, 0, 0, 0.2), 0 6px 60px 0 rgba(0, 0, 0, 0.19);
+                text-align: center;
+                float: left;
+                margin-right: 10px;
+                padding: 5px;
+                padding-top: 5px;
+                box-shadow: 5px 5px 3px #AAAAAA;
+            }
+
+            .headerBox {
+                filter:alpha(Opacity=80);-moz-opacity:0.7;opacity: 0.7;
+                border-radius:4px 4px 4px 4px;
+                color: #fff;
+                padding: 10px;
+                font-size: 15px;
+                height: 50px;
+            }
+
+            .headerBox.done {
+                background-color: #008844;
+            }
+            
+            .headerBox.todo {
+                background-color: #9955FF;
+            }
+
+            .headerBox p {
+                padding-top: 1px;
+                margin:0 auto;
+            }
+
+            .bodyBox {
+                padding: 10px;
+                font-size: 10px;
+                text-align: left;
+            }
+
+            .bodyBox ul {
+                margin:0;
+                padding:5px;
+            }
+
+            .bodyBox li {
+                margin:10px;
+                padding:0px;
+                font-size:10px;
+                list-style-type:circle;
+                list-style-position: outside;  
+            }
+        </style>
+        <script src="static/js/jquery-3.4.1.min.js"></script>
+        <script src="static/js/lcommon.js"></script>
+        <script>
+
+            function txts_2_card(txts) {
+                len = txts.length;
+                body = txts.slice(0, len - 1);
+                tail = txts[len - 1];
+                html = '<div class="cardBox"> <div class="headerBox ' + txts[0] + '"> <p> </p> </div><div class="bodyBox"><ul></ul></div></div>';
+                dom = $(html);
+                dom.find(".headerBox p").append(txts[1])
+                for (i = 2; i < txts.length - 1; i++) {
+                    dom.find(".bodyBox ul").append("<li>" + txts[i] + "</li>")
+                }
+                if (tail == "+$") {
+                    $(".cardBoxs").prepend(dom);
+                    $(".edit_area").val(body.join("\n"));
+                    $(".edit_area").attr("rows", body.length + 2);
+                    init();
+                } else if (tail == "-$") {
+                    var children = $(".cardBoxs").find(".cardBox");
+                    for (i = 0; i < children.length; i++) {
+                        cur = $(children[i])
+                        if (cur.find(".headerBox p").html().trim() == txts[1]) {
+                            cur.remove();
+                        }
+                    }
+                    init();
+                } else if (tail == "save$") {
+                    console.log($("body").html())
+                } 
+            }
+
+            function card_2_txts(dom) {
+                txts = []
+                var type = "done";
+                if (dom.find(".headerBox").attr("class").indexOf("done") == -1) {
+                    type = "todo";
+                    console.log("get type:", type);
+                }
+                txts[0] = type;
+
+                txts[1] = (dom.find(".headerBox p").html()).trim()
+                
+                var children = dom.find("li");
+                for (i = 0; i < children.length; i++) {
+                    txts[i + 2] = (children[i].innerHTML).trim();
+                }
+                console.log("card_2_txts:",  txts);
+                return txts;
+            }
+
+            function init() {
+                //$("body").find("*").css("border", "2px solid blue");
+
+                // 悬停某个卡片
+                $(".cardBox").unbind("animate");
+                $(".cardBox").hover(
+                    function(){
+                        $(this).animate({height: "+=10px", width: "+=10px"}, "fast");
+                    },
+                    function() {
+                        $(this).animate({height: "-=10px", width: "-=10px"}, "fast");
+                    });
+
+                    // 改变某个卡片的状态
+                    $(".cardBox").click(
+                        function() {
+                            var txts = card_2_txts($(this));
+                            $(".edit_area").val(txts.join("\n"));
+                            $(".edit_area").attr("rows", txts.length + 2);
+                    });
+
+                    $(".cardBox").unbind("dblclick");
+                    $(".cardBox").dblclick(
+                        function() {
+                            var val = $(this).find(".headerBox").attr("class");
+                            if (val.indexOf("done") == -1) {
+                                val = val.replace("todo", "done");
+                            } else {
+                                val = val.replace("done", "todo");
+                            }
+                            $(this).find(".headerBox").attr("class", val);
+                    });
+                    
+
+                    $(".edit_area").keyup(function(){
+                        var arr = $(".edit_area").val().split("\n");
+                        var len = arr.length
+                        $(this).attr("rows", len + 1);
+                        txts_2_card(arr);
+                    });
+            } 
+            $(function(){
+                init();
+            });
+        </script>
+    </head>
+
+    <body>
+        <div>
+            <textarea class="edit_area" rows="1"></textarea>
+        </div>
+        <div class="cardBoxs">
+            <div class="cardBox">
+                <div class="headerBox todo"> 
+                    <p>
+                        例行化LP巡查
+                    </p>
+                </div>
+                <div class="bodyBox">
+                    <ul>
+                    <li>怎样设置通用的缓存怎么做呢?</li>
+                    <li style="margin:10px;padding:0px;font-size:10px;">怎样设置通用的缓存?</li>
+                    <li style="margin:10px;padding:0px;font-size:10px;">怎样设置通用的缓存?</li>
+                    </ul>
+                </div>
+            </div>
+
+            <div class="cardBox">
+                <div class="headerBox todo">
+                    <p>熟悉平衡二叉树,B树和B+树</p>
+                </div>
+                <div class="bodyBox">
+                    <p><li>平衡树的核心是什么?</li></p>
+                    <p><li>这些树的特点和应用场景是什么?</li></p>
+                    <p><li>2019-06-18 2hour</li></p>
+                </div>
+            </div>
+            <div class="cardBox">
+                <div class="headerBox todo">
+                    <p>熟悉红黑树</p>
+                </div>
+                <div class="bodyBox">
+                    <p><li>2019-06-19 2hour</li></p>
+                </div>
+            </div>
+
+            <div class="cardBox">
+                <div class="headerBox todo">
+                    <p>识别招商加盟的LP</p>
+                </div>
+                <div class="bodyBox">
+                    <p><li>2019-06-18 2hour</li></p>
+                </div>
+            </div>
+            <div class="cardBox">
+                <div class="headerBox done">
+                    <p>文本转echart工具</p>
+                </div>
+                <div class="bodyBox">
+                    <p><li>强大的功能带来的丰富选择,但高学习成本让人放弃使用.</li></p>
+                    <p><li>大部分情况下，使用高度集成的框架是大材小用、臃肿不堪, 不如简简单单用底层语言构建功能.</li></p>
+                    <p><li>2019-06-17 2hour</li></p>
+                </div>
+            </div>
+            <div class="cardBox">
+                <div class="headerBox done">
+                    <p>K Sum算法</p>
+                </div>
+                <div class="bodyBox">
+                    <p><li>求K sum使用递归:大事化小,小事化了.</li></p>
+                    <p><li>求2 sum使用双指针,遍历过程中跳过一些路径.</li></p>
+                    <li>2019-06-17 3hour</li></p>
+                </div>
+            </div>
+
+    </body>
+
+</html>
