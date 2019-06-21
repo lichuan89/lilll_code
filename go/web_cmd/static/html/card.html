@@ -74,6 +74,57 @@
         <script src="static/js/lcommon.js"></script>
         <script>
 
+            function add_card(arr, parent_dom) {
+                html = '<div class="cardBox"> <div class="headerBox ' + arr[0] + '"> <p> </p> </div><div class="bodyBox"><ul></ul></div></div>';
+                dom = $(html);
+                dom.find(".headerBox p").append(arr[1])
+                for (i = 2; i < arr.length; i++) {
+                    if (arr[i].trim() == "") {
+                        continue;
+                    }
+                    dom.find(".bodyBox ul").append("<li>" + arr[i] + "</li>")
+                }
+                $(".cardBoxs").prepend(dom);
+                init();
+            }
+
+            function add_cards(arrs, parent_dom) {
+                function cmp(o1, o2) {
+                    n1 = parseInt(o1[2].replace(/[^0-9]/ig, ""));
+                    n2 = parseInt(o2[2].replace(/[^0-9]/ig, ""));
+                    return n1 - n2; 
+                } 
+                sort_arrs = arrs.sort(cmp);
+                console.log("::::", sort_arrs)
+
+                for (var i = 0; i < arrs.length; i+=1) {
+                    add_card(sort_arrs[i], parent_dom);
+                }
+            }
+
+            function arrs_2_text(arrs) {
+                txts = [];
+                k = 0;
+                for (var i = 0; i < arrs.length; i ++) {
+                    arr = arrs[i];
+                    for (var j = 0; j < arr.length; j ++ ) {
+                        txts[k] = arr[j];
+                        k += 1;
+                    }
+                }
+                return txts.join("\n");
+            }
+
+            function del_card(key, parent_dom) {
+                var children = parent_dom.find(".cardBox");
+                for (var i = 0; i < children.length; i++) {
+                    var cur = $(children[i])
+                    if (cur.find(".headerBox p").html().trim() == key) {
+                        cur.remove();
+                    }
+                }
+            }
+
             function txts_2_card(txts) {
                 len = txts.length;
                 body = txts.slice(0, len - 1);
@@ -99,7 +150,14 @@
                     }
                     init();
                 } else if (tail == "save$") {
-                    console.log($("body").html())
+                    var txt = save_cards($(".cardBoxs"));
+                    console.log("save:", txt);
+                    ajax_request("/cmd_ajax", "static/temp/card.list\n" + txt, function(url, req, res) {})
+                    /*$.post("/echo_ajax", "static/temp/card.list\n" + txt,
+                            function(data,status){
+                               console.log("echo_ajax:", data, status); 
+                        });
+                    */
                 } 
             }
 
@@ -121,6 +179,71 @@
                 console.log("card_2_txts:",  txts);
                 return txts;
             }
+            
+            function card_2_arr(dom) {
+                // 格式为: todo/done; key; context1; context2; ...
+                var txts = []
+                var type = "done";
+                if (dom.find(".headerBox").attr("class").indexOf("done") == -1) {
+                    type = "todo";
+                    console.log("get type:", type);
+                }
+                txts[0] = type;
+
+                txts[1] = (dom.find(".headerBox p").html()).trim()
+                
+                var children = dom.find("li");
+                for (i = 0; i < children.length; i++) {
+                    txts[i + 2] = (children[i].innerHTML).trim();
+                }
+                console.log("card_2_arr:",  txts);
+                return txts;
+            }
+
+            function cards_2_arrs(parent_dom) {
+                var arrs = []
+                var children = parent_dom.find(".cardBox");
+                for (var i = 0; i < children.length; i++) {
+                    console.log(children.length)
+                    arrs[i] = card_2_arr($(children[i])); 
+                }
+                return arrs;
+            }
+
+            function text_2_arrs(text) {
+                var arr = text.split("\n");
+                var arrs = [];
+                var j = 0;
+                var s = "";
+                for (var i = 0; i < arr.length; i ++) {
+                    var v = arr[i].trim();
+                    // 是否发现下一个卡片
+                    if (s != "" && (v == "todo" || v == "done")) {
+                        arrs[j] = s.split("\n");
+                        j += 1;
+                        s = ""; 
+                    }
+                    // 卡片内内容合并
+                    if (s == "") {
+                        s = v;
+                    } else {
+                        s = s + "\n" + v;
+                    }
+                }
+                if (s != "") {
+                    arrs[j] = s.split("\n");
+                }
+                return arrs;
+            }
+
+            function load_cards() {
+                    var context = $.post("/echo_ajax", "static/temp/card.list",
+                                function(data,status){
+                                    console.log("echo_ajax:", data, status); 
+                                    var arrs = text_2_arrs(data); 
+                                    add_cards(arrs, $(".cardBoxs"));
+                                });
+            }
 
             function init() {
                 //$("body").find("*").css("border", "2px solid blue");
@@ -138,7 +261,7 @@
                     // 改变某个卡片的状态
                     $(".cardBox").click(
                         function() {
-                            var txts = card_2_txts($(this));
+                            var txts = card_2_arr($(this));
                             $(".edit_area").val(txts.join("\n"));
                             $(".edit_area").attr("rows", txts.length + 2);
                     });
@@ -158,13 +281,41 @@
 
                     $(".edit_area").keyup(function(){
                         var arr = $(".edit_area").val().split("\n");
-                        var len = arr.length
-                        $(this).attr("rows", len + 1);
-                        txts_2_card(arr);
+                        var len = arr.length;
+                        var cmd = arr[len - 1];
+                        var context = arr.slice(0, len - 1);
+                        if (cmd[0] == ":") {
+                            if (cmd == ":-") {
+                                del_card(context[1], $(".cardBoxs"));
+                            } else if (cmd == ":w") {
+                                var arrs = cards_2_arrs($(".cardBoxs"));
+                                var text = arrs_2_text(arrs);
+                                $.post("/echo_ajax", "static/temp/card.list\n" + text,
+                                        function(data,status){
+                                            console.log("echo_ajax:", data, status); 
+                                        });
+                    
+                                console.log("save:", text);
+                            } else if (cmd == ":+") {
+                                var arrs = text_2_arrs(context.join("\n")); 
+                                add_cards(arrs, $(".cardBoxs"));
+                            } else if (cmd == ":u") {
+                                del_card(context[1], $(".cardBoxs"));
+                                var arrs = text_2_arrs(context.join("\n")); 
+                                add_cards(arrs, $(".cardBoxs"));
+                            }
+                            if (cmd == ":+" || cmd == ":-" || cmd == ":w" || cmd == ":u") {
+                                $(".edit_area").val(context.join("\n"));
+                                $(".edit_area").attr("rows", context.length + 3);
+                                return;
+                            }
+                        }
+                        $(".edit_area").attr("rows", len + 2);
                     });
             } 
             $(function(){
                 init();
+                load_cards();
             });
         </script>
     </head>
@@ -174,68 +325,22 @@
             <textarea class="edit_area" rows="1"></textarea>
         </div>
         <div class="cardBoxs">
+            <!--
             <div class="cardBox">
                 <div class="headerBox todo"> 
                     <p>
-                        例行化LP巡查
+                        关键词 
                     </p>
                 </div>
                 <div class="bodyBox">
                     <ul>
-                    <li>怎样设置通用的缓存怎么做呢?</li>
-                    <li style="margin:10px;padding:0px;font-size:10px;">怎样设置通用的缓存?</li>
-                    <li style="margin:10px;padding:0px;font-size:10px;">怎样设置通用的缓存?</li>
+                    <li>描述1</li>
+                    <li >描述2</li>
                     </ul>
                 </div>
             </div>
-
-            <div class="cardBox">
-                <div class="headerBox todo">
-                    <p>熟悉平衡二叉树,B树和B+树</p>
-                </div>
-                <div class="bodyBox">
-                    <p><li>平衡树的核心是什么?</li></p>
-                    <p><li>这些树的特点和应用场景是什么?</li></p>
-                    <p><li>2019-06-18 2hour</li></p>
-                </div>
-            </div>
-            <div class="cardBox">
-                <div class="headerBox todo">
-                    <p>熟悉红黑树</p>
-                </div>
-                <div class="bodyBox">
-                    <p><li>2019-06-19 2hour</li></p>
-                </div>
-            </div>
-
-            <div class="cardBox">
-                <div class="headerBox todo">
-                    <p>识别招商加盟的LP</p>
-                </div>
-                <div class="bodyBox">
-                    <p><li>2019-06-18 2hour</li></p>
-                </div>
-            </div>
-            <div class="cardBox">
-                <div class="headerBox done">
-                    <p>文本转echart工具</p>
-                </div>
-                <div class="bodyBox">
-                    <p><li>强大的功能带来的丰富选择,但高学习成本让人放弃使用.</li></p>
-                    <p><li>大部分情况下，使用高度集成的框架是大材小用、臃肿不堪, 不如简简单单用底层语言构建功能.</li></p>
-                    <p><li>2019-06-17 2hour</li></p>
-                </div>
-            </div>
-            <div class="cardBox">
-                <div class="headerBox done">
-                    <p>K Sum算法</p>
-                </div>
-                <div class="bodyBox">
-                    <p><li>求K sum使用递归:大事化小,小事化了.</li></p>
-                    <p><li>求2 sum使用双指针,遍历过程中跳过一些路径.</li></p>
-                    <li>2019-06-17 3hour</li></p>
-                </div>
-            </div>
+            -->
+        </div>
 
     </body>
 

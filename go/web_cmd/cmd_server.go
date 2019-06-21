@@ -65,6 +65,27 @@ func GetGID() uint64 {
 }
 
 func Str_2_file(content string, fileName string) {
+    // https://blog.csdn.net/qq_34021712/article/details/86433918
+    f, err := os.Create(fileName)
+    if err != nil {
+        fmt.Println(err)
+        return
+    }
+    l, err := f.WriteString(content)
+    if err != nil {
+        fmt.Println(err)
+        f.Close()
+        return
+    }
+    fmt.Println(l, "bytes written successfully")
+    err = f.Close()
+    if err != nil {
+        fmt.Println(err)
+        return
+    }
+}
+
+func Str_2_file1(content string, fileName string) {
     /*  
     os.O_WRONLY | os.O_CREATE | O_EXCL  【如果已经存在，则失败】
     os.O_WRONLY | os.O_CREATE   【如果已经存在，会覆盖写，不会清空原来的文件，而是从头直接覆盖写】
@@ -136,7 +157,9 @@ func main() {
 
     http.HandleFunc("/markdown", MarkDown)
     http.HandleFunc("/cmd", Cmd)
+    http.HandleFunc("/card", Card)
     http.HandleFunc("/cmd_ajax", CmdAjax)
+    http.HandleFunc("/echo_ajax", EchoAjax)
     err := http.ListenAndServe(IP + ":" + HTTP_PORT, nil)
     if err != nil {
         fmt.Println("服务失败 /// ", err)
@@ -157,17 +180,25 @@ func WriteTemplateToHttpResponse(res http.ResponseWriter, t *template.Template) 
     return err
 }
 
+func EchoHtml(res *http.ResponseWriter, req *http.Request, fpath string) {
+    t, err := template.ParseFiles(fpath)
+    if err != nil {
+        fmt.Println(err)
+        return
+    }
+    err = WriteTemplateToHttpResponse(*res, t)
+    if err != nil {
+        fmt.Println(err)
+        return
+    }
+}
+
 func Cmd(res http.ResponseWriter, req *http.Request) {
-    t, err := template.ParseFiles("static/html/cmd.html")
-    if err != nil {
-        fmt.Println(err)
-        return
-    }
-    err = WriteTemplateToHttpResponse(res, t)
-    if err != nil {
-        fmt.Println(err)
-        return
-    }
+    EchoHtml(&res, req, "static/html/cmd.html")
+}
+
+func Card(res http.ResponseWriter, req *http.Request) {
+    EchoHtml(&res, req, "static/html/card.html")
 }
 
 
@@ -211,6 +242,23 @@ func parse_cmd(cmd string) string {
     }   
     cmd = strings.Join(cmds, "|") 
     return cmd
+}
+
+func EchoAjax(res http.ResponseWriter, req *http.Request) {
+    str, _ := ioutil.ReadAll(req.Body)
+    s := string(str)
+    arr := strings.Split(s, "\n")
+    fpath := arr[0]
+    context := ""
+    if len(arr) > 1{
+        context = strings.Join(arr[1: ], "\n")
+        fmt.Printf("get EchoAjax. context:[%s]", context) 
+        Str_2_file(context, fpath)
+    } else {
+        context = File_2_str(fpath, -1)
+        fmt.Printf("send EchoAjax. context:[%s]", context)
+    }
+    fmt.Fprintf(res, "%s", context)
 }
 
 func CmdAjax(res http.ResponseWriter, req *http.Request) {
