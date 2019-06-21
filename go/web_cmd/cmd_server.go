@@ -85,32 +85,6 @@ func Str_2_file(content string, fileName string) {
     }
 }
 
-func Str_2_file1(content string, fileName string) {
-    /*  
-    os.O_WRONLY | os.O_CREATE | O_EXCL  【如果已经存在，则失败】
-    os.O_WRONLY | os.O_CREATE   【如果已经存在，会覆盖写，不会清空原来的文件，而是从头直接覆盖写】
-    os.O_WRONLY | os.O_CREATE | os.O_APPEND  【如果已经存在，则在尾部添加写】
-    */
-    //创建文件,给与创、写权限，421:读写操
-    filePointer, err := os.OpenFile(fileName, os.O_CREATE|os.O_WRONLY, 0751)
-    if err != nil {
-        log.Println("文件创建失败！错误：", err)
-        return
-    }   
-    //创建成功挂起关闭文件流,在函数结束前执行
-    defer filePointer.Close()
-    //NewWriter创建一个以目标文件具有默认大小缓冲、写入w的*Writer。
-    writer := bufio.NewWriter(filePointer)
-    //写入器将内容写入缓冲。返回写入的字节数。
-    size, err := writer.Write([]byte(content + "\n"))
-    //Flush方法将缓冲中的数据写入下层的io.Writer接口。缺少，数据将保留在缓冲区，并未写入io.Writer接口
-    writer.Flush()
-    if err == nil {
-        log.Println("文件创建并写入成功！字节数：", size)
-    } else {
-        log.Println("文件创建并写入失败！错误：", err)
-    }   
-}
 
 func File_2_str(fileName string, row_num int) string {
     //创建文件,给与创、写权限，421:读写操

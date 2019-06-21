@@ -620,7 +620,9 @@ def chart_curve():
 def chart_scatter():
     lines = []
     for line in sys.stdin:
-        line = line[:-1].decode('utf8')
+        if line[-1] == '\n':
+            line = line[:-1]
+        line = line.decode('utf8')
         arr = line.split('\t')
         lines.append(arr)
 
@@ -808,10 +810,10 @@ def chart_scatter():
                 }
             ]
         }
-    categorys = lines[0][1:]
-    option['title']['text'] = lines[0][0]
-    option['legend']['data'] = lines[0][1:]
-    series = [[[lines[i][j], lines[i + 1][j]] for j in range(len(lines[i]))] for i in range(1, len(lines), 2)]
+    categorys = [lines[i][0] for i in range(0, len(lines), 2)]
+    option['title']['text'] = '-' 
+    option['legend']['data'] = categorys 
+    series = [[[lines[i][j], lines[i + 1][j]] for j in range(1, len(lines[i]))] for i in range(0, len(lines), 2)]
     option['series'] = [
             {
                 "data":series[i],
@@ -848,7 +850,9 @@ def chart_scatter():
 def chart_pie():
     lines = []
     for line in sys.stdin:
-        line = line[:-1].decode('utf8')
+        if line[-1] == '\n':
+            line = line[:-1]
+        line = line.decode('utf8')
         arr = line.split('\t')
         lines.append(arr)
 
@@ -929,29 +933,6 @@ def chart_pie():
                         "text":"title0",
                         "subtext":""
                     }
-                },
-                {
-                    "series":[
-                        {
-                            "radius":"50%",
-                            "type":"pie",
-                            "name":"title0",
-                            "data":[
-                                {
-                                    "name":"name1",
-                                    "value":60.3
-                                },
-                                {
-                                    "name":"name2",
-                                    "value":30.4
-                                }
-                            ],
-                            "center":[
-                                "50%",
-                                "45%"
-                            ]
-                        }
-                    ]
                 }
             ]
         }
@@ -974,8 +955,9 @@ def chart_pie():
     ]
     option['options'][0]['legend']['data'] = lines[0][1:] 
     option['options'][0]['series'] = [series[0]]
-    option['options'][1]['series'] = series[1: ]
-    print json_2_str(option).encode('utf8', 'ignore') 
+    for serie in series[1: ]:
+        option['options'].append({'series': [serie]}) #['series'] = series[1: ]
+    print json_2_str(option).encode('utf8', 'ignore')
     print_chart_js()
 
 def print_chart_js():
