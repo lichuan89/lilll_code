@@ -3,7 +3,7 @@
     #loader {
         #border-top: 1px solid #CC00FF; 
         #border-bottom: 1px solid #CC00FF; 
-        animation: loader 5s cubic-bezier(0.7, 0, 0.2, 1) infinite;
+        #animation: loader 5s cubic-bezier(0.7, 0, 0.2, 1) infinite;
         height: 84px;
         width: 85px;
         position: absolute;
@@ -18,7 +18,7 @@
         }
     }
     #loader #top {
-        animation: top 5s linear infinite;
+        #animation: top 5s linear infinite;
         border-top: 42px solid #CC0099;
         border-right: 42px solid transparent;
         border-left: 42px solid transparent;
@@ -35,7 +35,7 @@
         }
     }
     #loader #bottom {
-        animation: bottom 5s linear infinite;
+        #animation: bottom 5s linear infinite;
         border-right: 42px solid transparent;
         border-bottom: 42px solid #CC0099;
         border-left: 42px solid transparent;
@@ -56,7 +56,7 @@
         }
     }
     #loader #line {
-        animation: line 5s linear infinite;
+        #animation: line 5s linear infinite;
         border-left: 1px solid #CC0099;
         height: 0px;
         width: 0px;
@@ -108,13 +108,13 @@
         border-top:20px solid #77FFCC;
         border-right:20px solid #77FFCC;
         right:0;
-        -webkit-animation: circle_right 5s linear infinite;
+        #-webkit-animation: circle_right 5s linear infinite;
     }
     .circle_process .leftcircle{
         border-bottom:20px solid #77FFCC;
         border-left:20px solid #77FFCC;
         left:0;
-        -webkit-animation: circle_left 5s linear infinite;
+        #-webkit-animation: circle_left 5s linear infinite;
     }
     @-webkit-keyframes circle_right{
         0%{
@@ -139,14 +139,14 @@
 <script src="../../static/js/jquery-3.4.1.min.js"></script>
 <script type="text/javascript">
 
-function sandy_clock(css_dict) {
-    html = '<div id="loader"> <div id="top"></div> <div id="bottom"></div> <div id="line"></div> </div>'
+function sandy_clock(css_dict, second) {
+    html = '<div id="loader" style="animation:loader ' + second + 's cubic-bezier(0.7, 0, 0.2, 1) infinite;"> <div id="top" style="animation: top ' + second + 's linear infinite;"></div> <div id="bottom" style="animation: bottom ' + second + 's linear infinite;"></div> <div id="line" style="animation: line ' + second + 's linear infinite;"></div> </div>'
     dom = $(html)
     dom.css(css_dict);
     return dom;
 }
-function circle_clock(css_dict){
-    html = '<div class="circle_process" style="left:30%;top:30%"> <div class="wrapper right"> <div class="circle rightcircle" id="rightcircle"></div> </div> <div class="wrapper left"> <div class="circle leftcircle" id="leftcircle"></div></div></div>'
+function circle_clock(css_dict, second){
+    html = '<div class="circle_process" style="left:30%;top:30%"> <div class="wrapper right"> <div class="circle rightcircle" id="rightcircle" style="-webkit-animation: circle_right ' + second + 's linear infinite;"></div> </div> <div class="wrapper left"> <div class="circle leftcircle" id="leftcircle" style="-webkit-animation: circle_left ' + second + 's linear infinite;"></div></div></div>'
     dom = $(html);
     dom.css(css_dict);
     return dom; 
@@ -154,8 +154,9 @@ function circle_clock(css_dict){
 function digit_clock(parent, css_dict, t){
     var dom = $("<div/>");
     dom.css(css_dict);
+    var second=t;
     function second_2_min(second) {
-        min = parseInt(second / 60);
+        var min = parseInt(second / 60);
         second = second % 60;
         return String(min) + ":" + String(second);
     }
@@ -163,9 +164,8 @@ function digit_clock(parent, css_dict, t){
         second = (second - 1 + t) % t;
         dom.html(second_2_min(second));
     }
-    second=t;
     dom.html(second_2_min(second));
-    parent.prepend(dom);
+    parent.append(dom);
     setInterval(function(){
         getTime();
     }, 1000)
@@ -173,33 +173,32 @@ function digit_clock(parent, css_dict, t){
 }
 
 $(function(){
-    var css_dict = {
-        "border": "solid green",
-        "position": "relative",
-        "left": "300",
-        "top": "300",
-        "border-top": "1px solid #CC00FF",
-        "border-bottom": "1px solid #CC00FF" 
-    };
-    $('body').prepend(sandy_clock(css_dict))
+    var second = 15 * 60;
     css_dict = {
-        "border": "solid green",
         "position": "relative",
-        "left": "200",
-        "top": "200",
-    };
-
-    $('body').prepend(circle_clock(css_dict))
-});
-
-    css_dict = {
-        "border": "solid green",
-        "position": "relative",
-        "left": "10",
-        "top": "10",
-        "height":100,
+        "left": "0",
+        "top": "0",
+        "height":50,
         "width": 100,
         "font-size": "50px",
     };
-    digit_clock($("body"), css_dict, 70)
+    digit_clock($("body"), css_dict, second)
+    var css_dict = {
+        "position": "relative",
+        "left": "70",
+        "top": "70",
+        "border-top": "1px solid #CC00FF",
+        "border-bottom": "1px solid #CC00FF" 
+    };
+    $('body').append(sandy_clock(css_dict, second))
+    css_dict = {
+        "position": "relative",
+        "left": "0",
+        "top": "100",
+    };
+
+    $('body').append(circle_clock(css_dict, second))
+    
+});
+
 </script>
