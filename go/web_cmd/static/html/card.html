@@ -90,6 +90,8 @@
 
             function add_cards(arrs, parent_dom) {
                 function cmp(o1, o2) {
+                    if (o1[0] == "todo" && o2[0] == "done") return 1;
+                    if (o1[0] == "done" && o2[0] == "todo") return -1;
                     n1 = parseInt(o1[2].replace(/[^0-9]/ig, ""));
                     n2 = parseInt(o2[2].replace(/[^0-9]/ig, ""));
                     return n1 - n2; 
@@ -252,10 +254,10 @@
                 $(".cardBox").unbind("animate");
                 $(".cardBox").hover(
                     function(){
-                        $(this).animate({height: "+=10px", width: "+=10px"}, "fast");
+                        $(this).animate({height: "+=5px", width: "+=5px"}, "fast");
                     },
                     function() {
-                        $(this).animate({height: "-=10px", width: "-=10px"}, "fast");
+                        $(this).animate({height: "-=5px", width: "-=5px"}, "fast");
                     });
 
                     // 改变某个卡片的状态

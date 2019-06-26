@@ -63,7 +63,9 @@ def parse_json(tags):
     is_simple_key = (tags[4] == '1') if len(tags) >= 5 else True
     i = 0 
     for line in sys.stdin:
-        line = line[:-1].decode('utf8', 'ignore')
+        if line[-1] == '\n':
+            line = line[:-1]
+        line = line.decode('utf8', 'ignore')
         arr = line.split('\t')
         obj = str_2_json(arr[idx])
         if obj is None:
