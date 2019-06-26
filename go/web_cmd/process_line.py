@@ -962,9 +962,139 @@ def chart_pie():
     print json_2_str(option).encode('utf8', 'ignore')
     print_chart_js()
 
+
+
+def chart_tree():
+    # https://echarts.baidu.com/examples/editor.html?c=tree-basic&theme=light
+    lines = []
+    for line in sys.stdin:
+        if line[-1] == '\n':
+            line = line[:-1]
+        line = line.decode('utf8')
+        arr = line.split('\t')
+        lines.append(arr)
+
+    data = {
+        "name":"flare",
+        "children":[
+            {
+                "name":"analytics",
+                "collapsed":0,
+                "children":[
+                    {
+                        "name":"cluster",
+                        "collapsed":0,
+                        "children":[
+                            {
+                                "name":"AgglomerativeCluster",
+                                "value":1
+                            },
+                            {
+                                "name":"CommunityStructure",
+                                "value":1
+                            }
+                        ]
+                    },
+                    {
+                        "name":"graph",
+                        "children":[
+                            {
+                                "name":"BetweennessCentrality",
+                                "value":3534
+                            },
+                            {
+                                "name":"LinkDistance",
+                                "value":5731
+                            }
+                        ]
+                    }
+                ]
+            }
+        ]
+    }
+    data = {
+        "name":"flare",
+        "children":[
+            {
+                "name":"analytics",
+                "children":[
+                    {
+                        "collapsed": 0,
+                        "name":"cluster",
+                        "children":[
+                            {
+                                "name":"AgglomerativeCluster",
+                                "value":3938
+                            },
+                            {
+                                "name":"CommunityStructure",
+                                "value":3812
+                            },
+                            {
+                                "name":"HierarchicalCluster",
+                                "value":6714
+                            },
+                            {
+                                "name":"MergeEdge",
+                                "value":743
+                            }
+                        ]
+                    }
+                ]
+            }
+        ]
+    }
+    option = {
+        "tooltip": {
+            "trigger": "item",
+            "triggerOn": "mousemove"
+        },
+        "series": [
+            {
+                "type": "tree",
+
+                "data": [data],
+
+                "top": "1%",
+                "left": "7%",
+               "bottom": "1%",
+                "right": "20%",
+
+                "symbolSize": 7,
+
+                "label": {
+                    "normal": {
+                        "position": "left",
+                        "verticalAlign": "middle",
+                        "align": "right",
+                        "fontSize": 9
+                    }
+                },
+
+                "leaves": {
+                    "label": {
+                        "normal": {
+                            "position": "right",
+                            "verticalAlign": "middle",
+                            "align": "left"
+                        }
+                    }
+                },
+
+                "expandAndCollapse": True,
+                "animationDuration": 550,
+                "animationDurationUpdate": 750
+            }
+        ]
+    }
+    print json_2_str(option).encode('utf8', 'ignore')
+    print_chart_js()
+    print '<script src="../../static/js/echarts.4.2.1.js"></script>'
+
+
 def print_chart_js():
     html = '''
-        <script src="../../static/js/echarts-all.js"></script>
+        <script src="../../static/js/echarts-all.2.2.7.js"></script>
         <script>
             window.onload = function() {
                 var dom = document.getElementById('body');
