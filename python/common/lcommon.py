@@ -13,6 +13,7 @@ import logging
 import json 
 import hashlib
 import datetime
+import copy 
 import re
 import fileinput
 import urllib
@@ -173,25 +174,35 @@ def get_domains(url):
         return [domain]
 
 
-def expand_json(obj, is_simple_key=True, path=[]):
+def expand_json(obj, sep='----', is_simple_key=True, path=[]):
+    """
+    将json展开成一个扁平的dict, is_simple_key=False, 则使用全路径;
+    is_simple_key=True, 则将冲突的val合并.
+    """
     def merge_dict(o1, o2):
-        return dict([v for v in o1.items()] + [v for v in o2.items()])
+        o = {}
+        for k, v in (o1.items() + o2.items()):
+            o.setdefault(k, [])
+            o[k].append(v)
+        for k, v in o.items():
+            o[k] = sep.join([unicode(i) for i in v])
+        return o 
 
     kvs = {}
     kns = {}
-    path_key = '--'.join(path)
+    path_key = sep.join(path)
     if type(obj) == dict:
         for k, v in obj.items():
-            o1, o2 = expand_json(v, is_simple_key, path + [k])
+            o1, o2 = expand_json(v, sep, is_simple_key, path + [k])
             kvs = merge_dict(kvs, o1)
             kns = merge_dict(kns, o2)
-        kns['%s--dict' % path_key] = len(obj)
+        kns['%s%sdict' % (path_key, sep)] = len(obj)
     elif type(obj) == list:
         for i in range(len(obj)):
-            o1, o2 = expand_json(obj[i], is_simple_key, path + [unicode(i)])
+            o1, o2 = expand_json(obj[i], sep, is_simple_key, path + [unicode(i)])
             kvs = merge_dict(kvs, o1)
             kns = merge_dict(kns, o2)
-        kns['%s--list' % path_key] = len(obj)
+        kns['%s%slist' % (path_key, sep)] = len(obj)
     else:
         if is_simple_key:
             kvs[path[-1] if path != [] else ''] = obj
@@ -200,6 +211,115 @@ def expand_json(obj, is_simple_key=True, path=[]):
         
 
     return kvs, kns 
+
+
+def unexpand_pair(obj, pair_key, pair_val, children_val=None, unit_dict={}):
+
+    if type(obj) == list:
+        items = [(str(i), obj[i]) for i in range(len(obj))]
+    elif type(obj) == dict:
+        items = obj.items()
+    else:
+        return obj
+
+    if children_val is None:
+        o = {}
+        for k, v in items:
+            o[k] = unexpand_pair(v, pair_key, pair_val, children_val, unit_dict)
+    else:
+        o = []
+        for k, v in items:
+            val = copy.deepcopy(unit_dict)
+            val[pair_key] = k
+            if type(v) == dict or type(v) == list:
+                val[children_val] = unexpand_pair(v, pair_key, pair_val, children_val, unit_dict)
+            else:
+                val[pair_val] = v
+            o.append(val)
+    return o  
+
+
+def expand_pair(obj, pair_keys, pair_vals):
+    """
+    将json内格式为{pair_key:v1, pair_val: v2}的结构写成{v1:v2}
+    """ 
+    if type(pair_keys) != list:
+        pair_keys = [pair_keys]
+    if type(pair_vals) != list:
+        pair_vals = [pair_vals]
+    if type(obj) == dict:
+        pair_key = None
+        for k in pair_keys:
+            if k in obj:
+                pair_key = k
+        pair_val = None
+        for k in pair_vals:
+            if k in obj:
+                pair_val = k
+        if pair_key is not None and pair_val is not None:
+            obj[obj[pair_key]] = expand_pair(obj[pair_val], pair_keys, pair_vals)
+            del obj[pair_key]
+            del obj[pair_val] 
+        else:
+            for k, v in obj.items():
+                obj[k] = expand_pair(v, pair_keys, pair_vals) 
+    elif type(obj) == list:
+        count = 0 
+        for v in obj: 
+            pair_key = [name for name in pair_keys if type(v) == dict and name in v]
+            pair_val = [name for name in pair_vals if type(v) == dict and name in v]
+            if pair_key != [] and pair_val != []:
+                count +=1
+                
+        for i in range(len(obj)):
+            obj[i] = expand_pair(obj[i], pair_keys, pair_vals)
+
+        if count == len(obj):
+            o = {}
+            for item in obj:
+                for k, v in item.items():
+                    o[k] = v
+            obj = o
+    return obj 
+
+
+def numdict_2_list(obj):
+    if type(obj) == dict:
+        cnt = 0
+        while cnt in obj or str(cnt) in obj:
+            cnt += 1
+        if len(obj) == cnt:
+            arr = []
+            for i in range(cnt):
+                arr.append(obj[i] if i in obj else obj[str(i)])
+            obj = [numdict_2_list(v) for v in arr] 
+    elif type(obj) == list:
+        obj = [numdict_2_list(v) for v in obj]
+    return obj
+
+
+def list_2_numdict(obj):
+    if type(obj) == dict:
+        for k, v in obj.items():
+            obj[k] = list_2_numdict(v)
+    elif type(obj) == list:
+        obj = dict([(str(i), obj[i]) for i in range(len(obj))]) 
+    return obj
+
+def unexpand_json(obj, sep='----'):
+    o = {}
+    for lk, v in obj.items():
+        ks = lk.split(sep)
+        m = o
+        for i in range(len(ks)):
+            if i != len(ks) - 1:
+                m.setdefault(ks[i], {})
+                m = m[ks[i]]
+            else:
+                m[ks[i]] = v
+    o = numdict_2_list(o)
+    return o
+        
 
 
 def test(opt):
@@ -215,13 +335,59 @@ def test(opt):
     if opt == 'expand_json' or opt == 'all':
         obj = [
             'v1',
-            {'k2': 'v2', 'k3': 'v3', 'k4': [5, 6]},
-            7
+            {'k2': 'v2', 'k3': 'v3', 'k4': [5, 6], 'k5': [{'key': 'k6', 'val': 'k7'}, {'key': 'k8', 'val': 'k9'}]},
+            {'k2': 'v10'} 
         ]
         print obj
-        print expand_json(obj)
-        print expand_json(obj, is_simple_key=False)
+        print expand_json(obj, '____')[0]
+        print "obj:", obj
+        o, r = expand_json(obj, '____', is_simple_key=False)
+        print "expand_json:", o 
+        print "unexpand_json:" ,unexpand_json(o, sep='____')
+        print expand_pair(obj, 'key', 'val')
+    
+        data = {
+            "name":"flare",
+            "children":[
+                {
+                    "name":"analytics",
+                    "children":[
+                        {
+                            "collapsed": 0,
+                            "name":"cluster",
+                            "children":[
+                                {
+                                    "name":"AgglomerativeCluster",
+                                    "value":3938
+                                },
+                                {
+                                    "name":"CommunityStructure",
+                                    "value":3812
+                                },
+                                {
+                                    "name":"HierarchicalCluster",
+                                    "value":6714
+                                },
+                                {
+                                    "name":"MergeEdge",
+                                    "value":743
+                                }
+                            ]
+                        }
+                    ]
+                }
+            ]
+        }
+        print "ori:", data 
+        obj = expand_pair(data, ["name"], ["value", "children"])
+        print "expand_pair:", obj
+        obj = unexpand_pair(obj, pair_key='name', pair_val='value', children_val='children', unit_dict={'collapsed': 0})
+        print "unexpand_pair:", obj
 
+    if opt == 'numdict_2_list' or opt == 'all':   
+        obj = {'0': '00', '1': '11', '2': [{4: 1}, {0:5}]}
+        print obj 
+        print numdict_2_list(obj)
 if __name__ == "__main__":
     opt = "all"
     test(opt)

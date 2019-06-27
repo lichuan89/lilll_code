@@ -20,6 +20,8 @@ from lcommon import str_2_file
 from lcommon import get_domains 
 from lcommon import expand_json
 from lcommon import expand_pair
+from lcommon import unexpand_pair
+from lcommon import unexpand_json 
 from lprocess_line import *
 
 
@@ -127,6 +129,16 @@ def sum_field(tags):
         arr += [unicode(data[idx]) for idx in idxs]
         print '\t'.join(arr).encode('utf8', 'ignore')
 
+
+def split_line(tags=['\t']):
+    sep = tags[0]
+    for line in sys.stdin:
+        if line[-1] == '\n':
+            line = line[: -1]
+        line = line.decode('utf8', 'ignore')
+        arr = line.split(sep)
+        for v in arr:
+            print v.encode('utf8', 'ignore')  
 
 def rsearch(tag):
     rule = tag[0].decode('utf8', 'ignore')
@@ -964,8 +976,10 @@ def chart_pie():
 
 
 
-def chart_tree():
+def chart_tree(tags=["json"]):
     # https://echarts.baidu.com/examples/editor.html?c=tree-basic&theme=light
+    tag = tags[0] # json or field
+
     lines = []
     for line in sys.stdin:
         if line[-1] == '\n':
@@ -974,44 +988,6 @@ def chart_tree():
         arr = line.split('\t')
         lines.append(arr)
 
-    data = {
-        "name":"flare",
-        "children":[
-            {
-                "name":"analytics",
-                "collapsed":0,
-                "children":[
-                    {
-                        "name":"cluster",
-                        "collapsed":0,
-                        "children":[
-                            {
-                                "name":"AgglomerativeCluster",
-                                "value":1
-                            },
-                            {
-                                "name":"CommunityStructure",
-                                "value":1
-                            }
-                        ]
-                    },
-                    {
-                        "name":"graph",
-                        "children":[
-                            {
-                                "name":"BetweennessCentrality",
-                                "value":3534
-                            },
-                            {
-                                "name":"LinkDistance",
-                                "value":5731
-                            }
-                        ]
-                    }
-                ]
-            }
-        ]
-    }
     data = {
         "name":"flare",
         "children":[
@@ -1044,6 +1020,31 @@ def chart_tree():
             }
         ]
     }
+    obj = {}
+    if tag == 'field':
+        for arr in lines:
+            #obj['\t'.join(arr[: -1])] = arr[-1]
+            obj['\t'.join(arr)] = '' 
+        obj = unexpand_json(obj, sep='\t')
+    elif tag == 'json':
+        s = ' '.join([' '.join(arr) for arr in lines])
+        obj = str_2_json(s)
+    def expand_val(obj):
+        if type(obj) == list:
+            obj = [expand_val(v) for v in obj]
+        elif type(obj) == dict:
+            for k, v in obj.items():
+                obj[k] = expand_val(v)
+        elif obj != '':
+            obj = {unicode(obj): 0}
+        return obj
+    obj = expand_val(obj)
+    data = unexpand_pair(obj, pair_key='name', pair_val='value', children_val='children', unit_dict={'collapsed': 0}) 
+    if len(data) == 1: 
+        data = data[0]
+    else:
+        data = {"name": "", "children": data, "collapsed": 0}
+
     option = {
         "tooltip": {
             "trigger": "item",
