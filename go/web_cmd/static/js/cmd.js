@@ -80,8 +80,9 @@ function show_output(url, req_data, res_data) {
         console.log("it will show chart:", option);
         myChart.setOption(option);
     } else {
-        if (cmd.indexOf("html_") == 0) { 
-            context = context.replace(/\n/g, "<br>")
+        if (cmd.indexOf("html_") == -1) { 
+            //context = context.replace(/\n/g, "<br>")
+            context = "<pre>" + context + "</pre>" 
         }
         html += context
         oDiv.innerHTML= html;

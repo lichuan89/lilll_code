@@ -241,11 +241,19 @@ func CmdAjax(res http.ResponseWriter, req *http.Request) {
     s := string(str)
     arr := strings.Split(s, "\n")
 
-    // 输入格式为: 命令 \n 分隔符(空表示tab) \n 数据文件路径 \n 数据内容
+    // 输入格式为: 命令 \n 数据文件路径 or 数据内容(tab或|分割)
     cmd := arr[0]
-    sep := arr[1]
-    fpath := arr[2]
-    context := strings.Join(arr[3:], "\n")
+    context := strings.Join(arr[1:], "\n")
+    sep := "\t"
+    fpath := ""
+    if strings.Index(context, "\t") != -1 {
+        sep = "\t" 
+    } else if strings.Index(context, "|") != -1 {
+        sep = "|"
+    } else {
+        fpath = context
+    }
+
     fmt.Printf("process input.cmd:[%s], sep:[%s], fpath:[%s], context:[%s]\n", cmd, sep, fpath, context)
 
     rule, _ := regexp.Compile("[^a-zA-Z0-9_]")
@@ -274,6 +282,8 @@ func CmdAjax(res http.ResponseWriter, req *http.Request) {
         script = fmt.Sprintf("cat %s | %s >  %s", fpath, cmd, output_fpath)
     } else if fpath != "" {
         script = fmt.Sprintf("wget '%s' -O %s &&  cat %s | %s >  %s", fpath, input_fpath, input_fpath, cmd, output_fpath) 
+    } else if context == "" { 
+        script = fmt.Sprintf("%s >  %s", cmd, output_fpath)
     } else {
         fmt.Printf("write input file. path:[%s], context:[%s]\n", input_fpath, context)
         Str_2_file(context, input_fpath)

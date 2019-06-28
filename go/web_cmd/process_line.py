@@ -22,7 +22,48 @@ from lcommon import expand_json
 from lcommon import expand_pair
 from lcommon import unexpand_pair
 from lcommon import unexpand_json 
+from lcommon import file_2_str 
 from lprocess_line import *
+
+
+def help():
+    data_fpath = './static/example/example_data.txt' 
+    data = file_2_str(data_fpath)
+    print '1. 例子数据:\n%s\n%s' % (data_fpath, data)
+    print ''
+    print '''2. 例子指令:
+        shell指令\t:awk -F"\t" '{if($8~/^[0-9.]+$/) {s+=$8;n+=1}}END{print "平均价格:"s/n;}'
+        自定义sh指令\t#restart
+        选择列\tselect_idx____0____6____1____7
+        随机排序\tshuffle|:head -6
+        纯文本表格\thtml_table
+        图文表格\tselect_idx____0____6____1____2____3____4____7|add_head____image____url____txt____txt|html_table____KT
+        图文卡片\tselect_idx____0____6____1____2____3____4____7|add_head____image____url____txt____txt|html_card____KT____4
+        曲线\t:head -4|select_idx____1____9____10____11____12____13____14____15|chart_curve
+        饼图\t:head -5|select_idx____1____9____10____11____12____13____14____15|del_head____1|add_head____sale____1____2____3____4____5____6____7|transpose|chart_pie
+        树图\tselect_idx____3____4____5|del_head____1|chart_tree____field
+        运行管道命令\t$
+'''
+
+    print ''
+    print '3. py指令全集:'
+    files = ['lprocess_line.py', 'process_line.py']
+    for f in files:
+        data = file_2_str(f)    
+        fs = re.findall('def ([a-zA-Z0-9_]+[(].*?[)])', data)
+        print '\t' + '\n\t'.join(fs) 
+    
+    print ''
+    print '4. sh指令全集:'
+    files = ['cmd.sh']
+    for f in files:
+        data = file_2_str(f)    
+        fs = re.findall('if [[][[] [$]cmd == "(.*?)" []][]]; then', data)
+        print '\t' + '\n\t'.join(fs) 
+    
+    print ''
+    print '4. 图片处理指令:'
+    print 'xxxxxxxxxxxxxx'
 
 
 def process_field(tags, func):
@@ -140,15 +181,26 @@ def sum_field(tags):
         print '\t'.join(arr).encode('utf8', 'ignore')
 
 
+def split_field(tags=['\t']):
+    sep = tags[0]
+    for line in sys.stdin:
+        if line[-1] == '\n':
+            line = line[: -1]
+        line = line.decode('utf8', 'ignore')
+        arr = re.split(sep, line) 
+        print '\t'.join(arr).encode('utf8', 'ignore')  
+
+
 def split_line(tags=['\t']):
     sep = tags[0]
     for line in sys.stdin:
         if line[-1] == '\n':
             line = line[: -1]
         line = line.decode('utf8', 'ignore')
-        arr = line.split(sep)
+        arr = re.split(sep, line) 
         for v in arr:
             print v.encode('utf8', 'ignore')  
+
 
 def rsearch(tag):
     rule = tag[0].decode('utf8', 'ignore')
@@ -345,7 +397,7 @@ def html_table(tags=['']):
     sys.stdout.write('</table>')
     
 
-def html_field(tags=['TK', 5, 150, 0, 0]):
+def html_card(tags=['TK', 5, 150, 0, 0]):
     """
     第一行表示各列的类型,包括image/url/text,可以只填前n列，后面几列默认为text;
     第二行表示各列的列名,该行为空则不展示;

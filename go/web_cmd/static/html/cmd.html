@@ -8,7 +8,7 @@
 <!-- <script src="static/js/echarts.min.js"></script> -->
 <link type="text/css" rel="styleSheet"  href="static/css/lvisual.css" />
 <script src="static/js/echarts-all.2.2.7.js"></script>
-<script src="static/js/lvisual.js"></script>
+<script src="static/js/cmd.js"></script>
 <script src="static/js/lcommon.js"></script>
 <script>
     window.onload = main;
@@ -17,10 +17,25 @@
         var input = document.getElementById("input_area").value;
         var response = ajax_request("/cmd_ajax", input, show_output)
     }
+    function OnCheck(){
+        var input = document.getElementById("input_area").value;
+        var lines = input.split("\n");
+        var first_line = lines[0];
+        if (first_line[first_line.length - 1] == '$' && first_line[first_line.length - 2] == '|') {
+            var data = first_line.slice(0, first_line.length - 2);
+            for (var i = 1; i < lines.length; i++) {
+                data = data + '\n' + lines[i]
+            } 
+            document.getElementById("input_area").value = data; 
+            OnButton(); 
+        }
+    }
     function main() {
         // 为按钮添加点击事件
         var oBtn = document.getElementById("ask_btn");
         oBtn.onclick = OnButton;
+        var oTxt = document.getElementById("input_area");
+        oTxt.onkeyup = OnCheck;
     }
 </script>
 
