@@ -309,7 +309,7 @@ def html_table(tags=['']):
     print '''
         <link type="text/css" rel="styleSheet"  href="../../static/css/lvisual.css" />
         <script src="../../static/js/echarts-all.js"></script>
-        <script src="../../static/js/lvisual.js"></script>
+        <script src="../../static/js/cmd.js"></script>
         <script src="../../static/js/lcommon.js"></script>
 
     '''
@@ -369,7 +369,7 @@ def html_field(tags=['TK', 5, 150, 0, 0]):
     print '''
         <link type="text/css" rel="styleSheet"  href="../../static/css/lvisual.css" />
         <script src="../../static/js/echarts-all.js"></script>
-        <script src="../../static/js/lvisual.js"></script>
+        <script src="../../static/js/cmd.js"></script>
         <script src="../../static/js/lcommon.js"></script>
 
     '''
