@@ -51,10 +51,12 @@ function show_output(url, req_data, res_data) {
     var arr = res_data.split("\n")
     var input_url = arr[0]
     var output_url = arr[1]
-    var context = arr.slice(2).join("\n")
+    var log_url = arr[2]
+    var context = arr.slice(3).join("\n")
     var html = '<a href="' + input_url + '" target="_blank">输入链接</a>'
     html += ' --> '
-    html += '<a href="' + output_url + '" target="_blank">输出链接</a><br>'
+    html += '<a href="' + output_url + '" target="_blank">输出链接</a> | '
+    html += '<a href="' + log_url + '" target="_blank">日志链接</a><br>'
     var cmd = req_data.split("\n")[0]
     console.log('print chart. ', cmd, context)
     if (cmd.indexOf("chart_") != -1) {

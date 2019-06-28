@@ -56,6 +56,16 @@ def process_field(tags, func):
         output = '\t'.join(arr)
         print output
 
+def shuffle():
+    lines = []
+    for line in sys.stdin:
+        if line[-1] == '\n':
+            line = line[:-1]
+        lines.append(line)
+    random.shuffle(lines)
+    for line in lines:
+        print line
+
 
 def parse_json(tags):
     idx = int(tags[0])
@@ -1023,8 +1033,13 @@ def chart_tree(tags=["json"]):
     obj = {}
     if tag == 'field':
         for arr in lines:
+            cnt = len(arr)
+            for i in range(len(arr)):
+                if arr[cnt - i - 1].strip() != '':
+                    cnt = cnt - i
+                    break
             #obj['\t'.join(arr[: -1])] = arr[-1]
-            obj['\t'.join(arr)] = '' 
+            obj['\t'.join(arr[: cnt])] = '' 
         obj = unexpand_json(obj, sep='\t')
     elif tag == 'json':
         s = ' '.join([' '.join(arr) for arr in lines])

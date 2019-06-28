@@ -198,22 +198,23 @@ func exec_shell(s string) (string, error){
     return out.String(), err 
 }
 
-func parse_cmd(cmd string) string {
+func parse_cmd(cmd string, log_fpath string) string {
     arr := strings.Split(cmd, "|")
     cmds := [] string{}
     for _, v := range arr{
         if v[: 1] == ":" {
             fmt.Println(v[: 1]) 
-            cmds = append(cmds, v[1: ])
+            s := fmt.Sprintf("%s 2> %s", v[1: ], log_fpath)
+            cmds = append(cmds, s)
         } else if v[: 1] == "#" {
             fmt.Println(v[: 1])
-            s := fmt.Sprintf("/bin/bash cmd.sh '%s'", v[1: ])
+            s := fmt.Sprintf("/bin/bash cmd.sh '%s' 2> %s", v[1: ], log_fpath)
             cmds = append(cmds, s)
         } else {
-            s := fmt.Sprintf("python process_line.py '%s'", v)  
+            s := fmt.Sprintf("python process_line.py '%s' 2> %s", v, log_fpath)
             cmds = append(cmds, s)
-        }   
-    }   
+        }
+    }
     cmd = strings.Join(cmds, "|") 
     return cmd
 }
@@ -253,20 +254,22 @@ func CmdAjax(res http.ResponseWriter, req *http.Request) {
 
     input_fpath := fmt.Sprintf("static/temp/%s.input.txt", id)
     output_fpath := fmt.Sprintf("static/temp/%s.output.html", id)
-    if strings.Index(cmd, "chart_") != 0 && strings.Index(cmd, "html_") != 0{
+    log_fpath := fmt.Sprintf("static/temp/%s.log.txt", id)
+    if strings.Index(cmd, "chart_") == -1 && strings.Index(cmd, "html_") == -1{
         output_fpath = fmt.Sprintf("static/temp/%s.output.txt", id)
     }
 
     url := fmt.Sprintf("http://%s:%s", IP, HTTP_PORT) 
     input_url := fmt.Sprintf("%s/%s", url, input_fpath)
     output_url := fmt.Sprintf("%s/%s", url, output_fpath)
+    log_url := fmt.Sprintf("%s/%s", url, log_fpath)
 
     if sep != "" {
         context = strings.Replace(context, sep, "\t", -1)
     }
    
     script := "" 
-    cmd = parse_cmd(cmd)
+    cmd = parse_cmd(cmd, log_fpath)
     if (len(fpath) >= 1 && fpath[: 1] ==  "/") || (len(fpath) >= 2 && fpath[: 2] == "./") { 
         script = fmt.Sprintf("cat %s | %s >  %s", fpath, cmd, output_fpath)
     } else if fpath != "" {
@@ -280,6 +283,6 @@ func CmdAjax(res http.ResponseWriter, req *http.Request) {
     r, _ := exec_shell(script)
     fmt.Printf("run script. log:[%s]\n", r)
     ret := File_2_str(output_fpath, 4000)
-    fmt.Fprintf(res, "%s\n%s\n%s", input_url, output_url, ret)
+    fmt.Fprintf(res, "%s\n%s\n%s\n%s", input_url, output_url, log_url, ret)
     fmt.Printf("response output.cmd:[%s], sep:[%s], fpath:[%s], context:[%s], res:[%s], output_fpath:[%s]\n", cmd, sep, fpath, context, ret, output_url)
 }
