@@ -134,7 +134,7 @@
     }
     #show{text-align:center;line-height:200px;font-size:60px;font-weight:700}
 </style>
-<body>
+<body style="background: #0b7286;">
 </body>
 <script src="../../static/js/jquery-3.4.1.min.js"></script>
 <script type="text/javascript">
@@ -152,12 +152,18 @@ function circle_clock(css_dict, second){
     return dom; 
 }
 function digit_clock(parent, css_dict, t){
-    var dom = $("<div/>");
+    var dom = $('<div/>');
     dom.css(css_dict);
     var second=t;
     function second_2_min(second) {
         var min = parseInt(second / 60);
         second = second % 60;
+        if (min < 10) {
+            min = '0' + String(min);
+        }
+        if (second < 10) {
+            second = '0' + String(second)
+        }
         return String(min) + ":" + String(second);
     }
     function getTime(){
@@ -172,33 +178,48 @@ function digit_clock(parent, css_dict, t){
     return dom;
 }
 
-$(function(){
-    var second = 15 * 60;
+function add_clocks(l, t, s){
+    var body = $("<div/>") 
+    var second = s;
     css_dict = {
         "position": "relative",
-        "left": "0",
-        "top": "0",
+        "top": t + 80,
         "height":50,
-        "width": 100,
-        "font-size": "50px",
+        "width": 130,
+        "font-size": "40px",
+        "border": "solid red"
     };
-    digit_clock($("body"), css_dict, second)
+    dom = digit_clock(body, css_dict, second)
     var css_dict = {
         "position": "relative",
-        "left": "70",
-        "top": "70",
+        "left": l + 210,
+        "top": t + 50,
         "border-top": "1px solid #CC00FF",
-        "border-bottom": "1px solid #CC00FF" 
+        "border-bottom": "1px solid #CC00FF", 
     };
-    $('body').append(sandy_clock(css_dict, second))
+    body.append(sandy_clock(css_dict, second))
     css_dict = {
         "position": "relative",
-        "left": "0",
-        "top": "100",
+        "left": l + 250,
+        "top": t - 100,
+        "border": "dashed green"
     };
 
-    $('body').append(circle_clock(css_dict, second))
-    
+    body.append(circle_clock(css_dict, second))
+    body.css({"width": 460, "height": 210})
+    return body
+}
+
+$(function(){
+    dom = add_clocks(0, 0, 15 * 60)
+    dom.css("border", "solid")
+    $('body').append(dom);
+    dom = add_clocks(0, 0, 60)
+    dom.css("border", "solid")
+    $('body').append(dom);
+    dom = add_clocks(0, 0, 10)
+    dom.css("border", "solid")
+    $('body').append(dom);
 });
 
 </script>

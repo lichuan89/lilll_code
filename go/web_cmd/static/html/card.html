@@ -155,8 +155,8 @@
                 } else if (tail == "save$") {
                     var txt = save_cards($(".cardBoxs"));
                     console.log("save:", txt);
-                    ajax_request("/cmd_ajax", "static/temp/card.list\n" + txt, function(url, req, res) {})
-                    /*$.post("/echo_ajax", "static/temp/card.list\n" + txt,
+                    ajax_request("/cmd_ajax", "static/data/card.list\n" + txt, function(url, req, res) {})
+                    /*$.post("/echo_ajax", "static/data/card.list\n" + txt,
                             function(data,status){
                                console.log("echo_ajax:", data, status); 
                         });
@@ -240,7 +240,7 @@
             }
 
             function load_cards() {
-                    var context = $.post("/echo_ajax", "static/temp/card.list",
+                    var context = $.post("/echo_ajax", "static/data/card.list",
                                 function(data,status){
                                     console.log("echo_ajax:", data, status); 
                                     var arrs = text_2_arrs(data); 
@@ -294,7 +294,7 @@
                             } else if (cmd == ":w") {
                                 var arrs = cards_2_arrs($(".cardBoxs"));
                                 var text = arrs_2_text(arrs);
-                                $.post("/echo_ajax", "static/temp/card.list\n" + text,
+                                $.post("/echo_ajax", "static/data/card.list\n" + text,
                                         function(data,status){
                                             console.log("echo_ajax:", data, status); 
                                         });

@@ -88,7 +88,7 @@ func Str_2_file(content string, fileName string) {
 
 func File_2_str(fileName string, row_num int) string {
     //创建文件,给与创、写权限，421:读写操
-    filePointer, err := os.OpenFile(fileName, os.O_RDONLY, 0751)
+    filePointer, err := os.OpenFile(fileName, os.O_RDONLY|os.O_CREATE, 0751)
     if err != nil {
         log.Println("文件创建失败！错误：", err)
         return ""
