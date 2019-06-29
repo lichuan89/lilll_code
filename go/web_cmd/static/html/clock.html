@@ -135,6 +135,7 @@
     #show{text-align:center;line-height:200px;font-size:60px;font-weight:700}
 </style>
 <body style="background: #0b7286;">
+<textarea id="setting" rows="2" cols="74" style="background: #0b7286;">15</textarea>
 </body>
 <script src="../../static/js/jquery-3.4.1.min.js"></script>
 <script type="text/javascript">
@@ -179,7 +180,7 @@ function digit_clock(parent, css_dict, t){
 }
 
 function add_clocks(l, t, s){
-    var body = $("<div/>") 
+    var body = $('<div class="clocks" />') 
     var second = s;
     css_dict = {
         "position": "relative",
@@ -210,8 +211,10 @@ function add_clocks(l, t, s){
     return body
 }
 
-$(function(){
-    dom = add_clocks(0, 0, 15 * 60)
+
+function set_clocks(second){
+    $('.clocks').remove();
+    var dom = add_clocks(0, 0, second)
     dom.css("border", "solid")
     $('body').append(dom);
     dom = add_clocks(0, 0, 60)
@@ -220,6 +223,20 @@ $(function(){
     dom = add_clocks(0, 0, 10)
     dom.css("border", "solid")
     $('body').append(dom);
+
+}
+
+$(function(){
+    $('#setting').keyup(function(){
+        //window.location.reload();
+        var txt = $('#setting').val();
+        if (txt[txt.length - 1] == '$') {
+            txt = txt.slice(0, txt.length - 1)
+            set_clocks(parseInt(txt * 60))
+            $('#setting').val(txt);
+        }
+    });
+    set_clocks(15 * 60);
 });
 
 </script>
