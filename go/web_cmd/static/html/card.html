@@ -43,8 +43,11 @@
                 background-color: #008844;
             }
             
+            .headerBox.doing {
+                background-color: #C71585;
+            }
             .headerBox.todo {
-                background-color: #9955FF;
+                background-color: #C0C0C0;
             }
 
             .headerBox p {
@@ -89,10 +92,18 @@
                 init();
             }
 
+
+            function do_2_num(o) {
+                if (o == "doing") return 2;
+                if (o == "todo") return 1;
+                if (o == "done") return 0;
+                return -1;
+            }
             function add_cards(arrs, parent_dom) {
                 function cmp(o1, o2) {
-                    if (o1[0] == "todo" && o2[0] == "done") return 1;
-                    if (o1[0] == "done" && o2[0] == "todo") return -1;
+                    if (o1[0] != o2[0]) {
+                        return do_2_num(o1[0]) - do_2_num(o2[0]); 
+                    }
                     n1 = parseInt(o1[2].replace(/[^0-9]/ig, ""));
                     n2 = parseInt(o2[2].replace(/[^0-9]/ig, ""));
                     return n1 - n2; 
@@ -168,7 +179,7 @@
                 txts = []
                 var type = "done";
                 if (dom.find(".headerBox").attr("class").indexOf("done") == -1) {
-                    type = "todo";
+                    type = "doing";
                     console.log("get type:", type);
                 }
                 txts[0] = type;
@@ -184,10 +195,13 @@
             }
             
             function card_2_arr(dom) {
-                // 格式为: todo/done; key; context1; context2; ...
+                // 格式为: doing/done; key; context1; context2; ...
                 var txts = []
                 var type = "done";
-                if (dom.find(".headerBox").attr("class").indexOf("done") == -1) {
+                if (dom.find(".headerBox").attr("class").indexOf("doing") != -1) {
+                    type = "doing";
+                    console.log("get type:", type);
+                } else if (dom.find(".headerBox").attr("class").indexOf("todo") != -1) {
                     type = "todo";
                     console.log("get type:", type);
                 }
@@ -221,7 +235,7 @@
                 for (var i = 0; i < arr.length; i ++) {
                     var v = arr[i].trim();
                     // 是否发现下一个卡片
-                    if (s != "" && (v == "todo" || v == "done")) {
+                    if (s != "" && (v == "doing" || v == "done" || v == "todo")) {
                         arrs[j] = s.split("\n");
                         j += 1;
                         s = ""; 
@@ -274,10 +288,12 @@
                     $(".cardBox").dblclick(
                         function() {
                             var val = $(this).find(".headerBox").attr("class");
-                            if (val.indexOf("done") == -1) {
-                                val = val.replace("todo", "done");
-                            } else {
+                            if (val.indexOf("doing") != -1) {
+                                val = val.replace("doing", "done");
+                            } else if (val.indexOf("done") != -1) {
                                 val = val.replace("done", "todo");
+                            } else {
+                                val = val.replace("todo", "doing");
                             }
                             $(this).find(".headerBox").attr("class", val);
                     });
@@ -331,7 +347,7 @@
         <div class="cardBoxs">
             <!--
             <div class="cardBox">
-                <div class="headerBox todo"> 
+                <div class="headerBox doing"> 
                     <p>
                         关键词 
                     </p>

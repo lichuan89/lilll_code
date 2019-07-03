@@ -30,6 +30,22 @@ const (
     HTTP_PORT  string = "8000"
 )
 
+func u2s(from string) string{
+    sUnicodev := strings.Split(from, "\\u")
+    var context string
+    for _, v := range sUnicodev {
+         if len(v) < 1 { 
+             continue
+         }
+         temp, err := strconv.ParseInt(v, 16, 32)
+         if err != nil {
+             panic(err)
+         }
+         context += fmt.Sprintf("%c", temp)
+     }
+     return context
+}
+
 func GetIP() string {
     addrs, err := net.InterfaceAddrs()
     if err != nil{
@@ -73,6 +89,7 @@ func Str_2_file(content string, fileName string) {
         return
     }
     l, err := f.WriteString(content)
+    //l, err := f.Write([]byte(content))
     if err != nil {
         fmt.Println(err)
         f.Close()
@@ -351,6 +368,7 @@ func CmdAjax(res http.ResponseWriter, req *http.Request) {
         for _, file := range files.([] interface {}) {
             fname := file.(map[string] interface {})["fname"].(string)
             fcontext := file.(map[string] interface {})["data"].(string)
+            fcontext = u2s(fcontext)
             wpath := temp_dir + "/" + fname
             fmt.Printf("upload file. fname:%s, tag:%s\n", fname, tag)
             Str_2_file(fcontext, wpath)

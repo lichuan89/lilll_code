@@ -12,6 +12,28 @@
 <script src="static/js/lcommon.js"></script>
 <script src="static/js/jquery-3.4.1.min.js"></script>
 <script>
+    function u2s(str){
+        return eval("'" + str + "'");
+        return unescape(str.replace(/＼u/g, "%u")); 
+    }
+
+    function s2u(str) {
+        let temp;
+        let i = 0;
+        let r = '';
+        for (let val of str) {
+            temp = val.codePointAt(0).toString(16);
+            while ( temp.length < 4 )
+                temp = '0' + temp;
+            r += '\\u' + temp;
+        };
+        return r;
+    }
+    var u = c2u("unicode 16 编码");
+    var s = u2c(u);
+    console.log("test:", u, s);
+</script>
+<script>
     window.onload = main;
 
     function upload_files(call_back){
@@ -24,7 +46,7 @@
             //reader.readAsBinaryString(files[i])
             reader.onload = function (e) {
                 data.push({
-                        "data": this.result,
+                        "data": s2u(this.result),
                         "fname": this.fname
                     });
                 console.log("file count:", files.length)
