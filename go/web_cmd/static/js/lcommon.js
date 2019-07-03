@@ -36,7 +36,7 @@ function ajax_request(url, req_data, callback) {
     xhr.onreadystatechange = function () {
         if (xhr.readyState == 4) { // 读取完成
             if (xhr.status == 200) {
-                console.log("ajax response. url:%s, res:%s, res:%s", url, req_data, xhr.responseText)
+                console.log("ajax response. url:%s, req:%s, res:%s", url, req_data, xhr.responseText)
                 callback(url, req_data, xhr.responseText)
             }
         }

@@ -10,12 +10,47 @@
 <script src="static/js/echarts-all.2.2.7.js"></script>
 <script src="static/js/cmd.js"></script>
 <script src="static/js/lcommon.js"></script>
+<script src="static/js/jquery-3.4.1.min.js"></script>
 <script>
     window.onload = main;
+
+    function upload_files(call_back){
+        var data = [] 
+        var files = $("#upload_files")[0].files;
+        for (var i = 0; i < files.length; i++) {
+            var reader = new FileReader();
+            reader.fname = files[i].name
+            reader.readAsText(files[i],'UTF-8');
+            //reader.readAsBinaryString(files[i])
+            reader.onload = function (e) {
+                data.push({
+                        "data": this.result,
+                        "fname": this.fname
+                    });
+                console.log("file count:", files.length)
+                if (data.length == files.length) {
+                    var data_str = JSON.stringify(data)
+                    call_back(data_str);
+                    console.log(data_str)
+                }
+            };
+        }
+    }
     function OnButton(){
+        function ajax_upload_files(data_str) {
+            var input = document.getElementById("input_area").value;
+            var rule = new RegExp("upload____([^ \|]+|$)") 
+            var cmd = rule.exec(input)[0];
+            var response = ajax_request("/cmd_ajax", cmd + "\n" + data_str + '\n', show_output);
+        }
         // 从html元素中获取请求内容
         var input = document.getElementById("input_area").value;
-        var response = ajax_request("/cmd_ajax", input, show_output)
+        if (input.indexOf("upload____") != -1) {
+            $(".upload_input").click()
+            $(".upload_input").change(function() {upload_files(ajax_upload_files);});
+        } else {
+            var response = ajax_request("/cmd_ajax", input, show_output)
+        }
     }
     function OnCheck(){
         var input = document.getElementById("input_area").value;
@@ -53,6 +88,7 @@
     <div>
         <textarea id="input_area" rows="10" cols="60">输入命令</textarea>
         <input id="ask_btn" type="button" value=">>" />
+        <input type="file" style="display:none;" class="upload_input" multiple="multiple" name="upload_files" id="upload_files" value="" placeholder="...">
         <textarea id="output_area" rows="10" cols="100">输出结果</textarea>
     </div>
     <div id="output_html" style="width: 800px;height:400px;"></div>

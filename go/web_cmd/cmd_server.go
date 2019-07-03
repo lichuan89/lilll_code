@@ -9,6 +9,7 @@ import (
     "bytes"
     "errors"
     "fmt"
+    "encoding/json"
     "html/template"
     "os/exec"
     "io"
@@ -121,6 +122,27 @@ func File_2_str(fileName string, row_num int) string {
     return strings.Join(lines, "")
 }
 
+func json_2_str(obj interface{}) string {
+    json_byte, err := json.MarshalIndent(obj, "", " ")
+    if err != nil{
+        return ""
+    }   
+    return string(json_byte)
+}
+
+func str_2_json(str string) interface{} {
+    if str[: 1] == "[" {
+        obj := []interface{}{}
+        json.Unmarshal([]byte(str), &obj)
+        return obj 
+    
+    }
+    obj := map[string]interface{}{}
+    json.Unmarshal([]byte(str), &obj)
+    return obj 
+}
+
+
 func init() {
     runtime.GOMAXPROCS(runtime.NumCPU())
 }
@@ -222,6 +244,7 @@ func parse_cmd(cmd string, log_fpath string) string {
 func EchoAjax(res http.ResponseWriter, req *http.Request) {
     str, _ := ioutil.ReadAll(req.Body)
     s := string(str)
+    fmt.Printf("request. data:[%s]", s) 
     arr := strings.Split(s, "\n")
     fpath := arr[0]
     context := ""
@@ -235,6 +258,35 @@ func EchoAjax(res http.ResponseWriter, req *http.Request) {
     }
     fmt.Fprintf(res, "%s", context)
 }
+
+func PathExists(path string) (bool, error) {
+    _, err := os.Stat(path)
+    if err == nil {
+        return true, nil
+    }
+    if os.IsNotExist(err) {
+        return false, nil
+    }
+    return false, err
+}
+
+func MkDir(dir string) bool {
+    exist, err := PathExists(dir)
+    if err != nil {
+        return false
+    }
+
+    if exist {
+        os.RemoveAll(dir)
+    }
+    err = os.Mkdir(dir, os.ModePerm)
+    if err != nil {
+        return false 
+    } else {
+        return true 
+    }
+}
+
 
 func CmdAjax(res http.ResponseWriter, req *http.Request) {
     str, _ := ioutil.ReadAll(req.Body)
@@ -250,11 +302,18 @@ func CmdAjax(res http.ResponseWriter, req *http.Request) {
         sep = "\t" 
     } else if strings.Index(context, "|") != -1 {
         sep = "|"
+    } else if strings.Count(context, "\n") >= 1 {
+        sep = "\t" 
     } else {
         fpath = context
     }
 
-    fmt.Printf("process input.cmd:[%s], sep:[%s], fpath:[%s], context:[%s]\n", cmd, sep, fpath, context)
+    cut := len(context)
+    if cut > 100 {
+        cut = 100
+    }
+    //fmt.Printf("process input.cmd:[%s], sep:[%s], fpath:[%s], context:[%s]\n", cmd, sep, fpath, context[: cut])
+    fmt.Printf("process input.cmd:[%s], sep:[%s], fpath:[%s]\n", cmd, sep, fpath)
 
     rule, _ := regexp.Compile("[^a-zA-Z0-9_]")
     id := rule.ReplaceAllString(cmd, "__");
@@ -278,7 +337,28 @@ func CmdAjax(res http.ResponseWriter, req *http.Request) {
    
     script := "" 
     cmd = parse_cmd(cmd, log_fpath)
-    if (len(fpath) >= 1 && fpath[: 1] ==  "/") || (len(fpath) >= 2 && fpath[: 2] == "./") { 
+    if strings.Index(cmd, "upload_") != -1 {
+        reg := regexp.MustCompile(`(upload____[^ '\|]+)`)
+        tag := reg.FindAllString(cmd, -1)[0][10:]
+        files := str_2_json(context)
+        if tag == "" {
+            tag = "upload"
+        }
+        temp_dir := "static/temp/" + tag
+        MkDir(temp_dir)
+        fmt.Printf("begin to upload files:[%s]\n", tag)
+        ret := ":cat " 
+        for _, file := range files.([] interface {}) {
+            fname := file.(map[string] interface {})["fname"].(string)
+            fcontext := file.(map[string] interface {})["data"].(string)
+            wpath := temp_dir + "/" + fname
+            fmt.Printf("upload file. fname:%s, tag:%s\n", fname, tag)
+            Str_2_file(fcontext, wpath)
+            ret +=  " " + wpath
+        }
+        fmt.Fprintf(res, "%s\n%s\n%s\n%s", "", "", "", ret)
+        return
+    } else if (len(fpath) >= 1 && fpath[: 1] ==  "/") || (len(fpath) >= 2 && fpath[: 2] == "./") { 
         script = fmt.Sprintf("cat %s | %s >  %s", fpath, cmd, output_fpath)
     } else if fpath != "" {
         script = fmt.Sprintf("wget '%s' -O %s &&  cat %s | %s >  %s", fpath, input_fpath, input_fpath, cmd, output_fpath) 
@@ -294,5 +374,6 @@ func CmdAjax(res http.ResponseWriter, req *http.Request) {
     fmt.Printf("run script. log:[%s]\n", r)
     ret := File_2_str(output_fpath, 4000)
     fmt.Fprintf(res, "%s\n%s\n%s\n%s", input_url, output_url, log_url, ret)
-    fmt.Printf("response output.cmd:[%s], sep:[%s], fpath:[%s], context:[%s], res:[%s], output_fpath:[%s]\n", cmd, sep, fpath, context, ret, output_url)
+    //fmt.Printf("response output.cmd:[%s], sep:[%s], fpath:[%s], context:[%s], res:[%s], output_fpath:[%s]\n", cmd, sep, fpath, context, ret, output_url)
+    fmt.Printf("response output.cmd:[%s], sep:[%s], fpath:[%s], res:[%s], output_fpath:[%s]\n", cmd, sep, fpath, ret, output_url)
 }

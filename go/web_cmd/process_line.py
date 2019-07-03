@@ -290,6 +290,20 @@ def add_index(tags=[0]):
         begin += 1
         print '\t'.join(output)
 
+def add_head_index(tags=[0]):
+    begin = int(tags[0])
+    is_begin = True
+    for line in sys.stdin:
+        if line[-1] == '\n':
+            line = line[: -1]
+            if is_begin:
+                cnt = len(line.split('\t'))
+                arr = [str(v) for v in range(begin, begin + cnt)]
+                print '\t'.join(arr)
+                is_begin = False
+        print line 
+
+
 def add_const(tags):
     const = tags[0]
     idx = int(tags[1]) if len(tags) > 1 else 0
@@ -357,7 +371,7 @@ def html_table(tags=['']):
     参数: TK -> 第一行类型第二行字段名; T -> 第一行类型; K -> 第一行类型名
     """
     tag = tags[0]
-
+    red_idx = int(tags[1]) if len(tags) > 1 else None 
     print '''
         <link type="text/css" rel="styleSheet"  href="../../static/css/lvisual.css" />
         <script src="../../static/js/echarts-all.js"></script>
@@ -374,7 +388,7 @@ def html_table(tags=['']):
         if types == []:
             types = arr
             continue
-        pre = "<td>"
+        pre = '<td>'
         suf = "</td>"
         if i == 0 and line.strip() == '':
             i += 1
@@ -382,6 +396,11 @@ def html_table(tags=['']):
         if i == 0:
             pre = "<th>"
             suf = "</th>"
+        if pre == "<th>" or len(arr) <= red_idx or (red_idx is None or arr[red_idx] == '0' or arr[red_idx] == '' or arr[red_idx] == '-'):
+            tr = '<tr>'
+        else:
+            pre = '<td style="background:#ffce9f">'
+            tr = '<tr style="border:solid red">' 
         for j in range(len(arr)):
             v = arr[j]
             if j < len(types) and v.find('http') == 0:
@@ -392,7 +411,7 @@ def html_table(tags=['']):
                     arr[j] = '<a href="%s" target="_blank">%s</a>' % (v, txt) 
 
         output = ["%s%s%s" % (pre, v, suf) for v in arr]
-        sys.stdout.write('<tr>%s</tr>' % '\t'.join(output))
+        sys.stdout.write('%s%s</tr>' % (tr, '\t'.join(output)))
         i += 1
     sys.stdout.write('</table>')
     
