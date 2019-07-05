@@ -57,7 +57,8 @@ function show_output(url, req_data, res_data) {
     var log_url = arr[2]
     var context = arr.slice(3).join("\n")
 
-    if (context.indexOf(":cat ") == 0) {
+    if (context.indexOf("#!lcmd") == 0) {
+        var context = arr.slice(4).join("\n")
         document.getElementById("input_area").value = context;
         OnButton();
     }
@@ -67,7 +68,6 @@ function show_output(url, req_data, res_data) {
     html += '<a href="' + output_url + '" target="_blank">输出链接</a> | '
     html += '<a href="' + log_url + '" target="_blank">日志链接</a><br>'
     var cmd = req_data.split("\n")[0]
-    console.log("context:", context, context.indexOf(":cat ") == 0)
     console.log('print chart. ', cmd, context)
     if (cmd.indexOf("chart_") != -1) {
         context = context.split("\n")[0];

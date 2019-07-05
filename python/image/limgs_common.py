@@ -18,6 +18,7 @@ def urls_2_imageFiles(files):
     """
     files是一个url->fpath的dict, 抓取图像url 并存储起来
     """
+    ret = {} 
     for url, fpath in files.items():
         try:
             path = '/'.join(fpath.split('/')[: -1])
@@ -28,9 +29,10 @@ def urls_2_imageFiles(files):
         try:
             context = urllib.urlopen(url).read()
             str_2_file(context, fpath)
+            ret[url] = fpath
         except IOError as error:
             print >> sys.stderr, error
-    return []
+    return ret
 
  
 
@@ -52,7 +54,8 @@ def XImage_2_files(X, shape, path, fnames, prefix=''):
             x = gray_2_rgb(x)
         if shape is not None:
             x = rgb_resize(x, size=shape[: 2]) 
-        cv2image_2_file(image_2_cv2image(x), '%s/%s%s.bmp' % (path, prefix, fname))
+        cv2image_2_file(image_2_cv2image(x), '%s/%s%s' % (path, prefix, fname))
+        #cv2image_2_file(image_2_cv2image(x), '%s/%s%s.bmp' % (path, prefix, fname))
 
 
 def files_2_Ximage(path_arr, shape=None):
@@ -70,40 +73,52 @@ def files_2_Ximage(path_arr, shape=None):
             image = rgb_resize(image, size=shape[: 2])
         X.append(image)
         fnames.append(f.split('/')[-1])
-    if shape is not None:
+    if shape is not None and shape[0] is not None and shape[1] is not None:
         X = np.array(X, dtype='uint')
     #fnames = np.array(fnames)
     return X, fnames 
 
 
-def quick_transform_image(input_path, output_path, func, size=(100, 100), prefix=''):
+def quick_transform_image(input_path, output_path, func, size=(100, 100), prefix='', args=None):
     """
     从一个文件夹读入图像,处理后输出到另一个文件夹
     """
-    files = list_files(input_path)
+    if type(input_path) == list or type(input_path) == dict:
+        files = input_path
+    else:
+        files = list_files(input_path)
     X, fnames = files_2_Ximage(files, size)
-    X = np.array([func(x) for x in X])
+    X = [func(x) for x in X] if args is None else [func(x, args) for x in X]
+    if size[0] is not None and size[1] is not None:
+        X = np.array(X)
     quick_XImage_2_files(X, None, output_path, fnames, prefix)
-    
+    return files 
 
 def quick_urls_2_imageFiles():
     """
     从输入流读取url \t fpath，抓取图像url 并存储起来
     """
     def worker(lines, arg):
-        files = dict([line.split('\t') for line in lines])
-        urls_2_imageFiles(files)
-        return []
-    muti_process_stdin(worker, [], batch_line_num=30, thread_running_num=7)
+        files = dict([line.split('\t')[: 2] for line in lines])
+        ret = urls_2_imageFiles(files)
+        output = []
+        for line in lines:
+            arr = line.split('\t')
+            if arr[0] in ret:
+                output.append(line)
+        return output 
+    muti_process_stdin(worker, [], batch_line_num=21, thread_running_num=7)
 
 
 def quick_XImage_2_files(X, shape, path, fnames, prefix=''):
     def worker(lines, arg):
         shape, path, prefix = arg
-        X = np.array([line[0] for line in lines])
+        #X = np.array([line[0] for line in lines])
+        X = [line[0] for line in lines]
         fnames = [line[1] for line in lines]
         XImage_2_files(X, shape, path, fnames, prefix)
-    lines = [(X[i], fnames[i]) for i in range(X.shape[0])]
+    cnt = X.shape[0] if type(X) != list else len(X)
+    lines = [(X[i], fnames[i]) for i in range(cnt)]
     muti_process(lines, 6, worker, args=[shape, path, prefix], use_share_path=None)
 
 
@@ -183,7 +198,7 @@ def test(tag):
         urls_2_imageFiles(files)
 
     if tag == 'quick_urls_2_imageFiles':
-        #echo -e "http://ms.bdimg.com/dsp-image/1756536684.jpg\ttest/1756536684_1.jpg\nhttp://ms.bdimg.com/dsp-image/571671431.jpg\ttest/571671431_0.jpg" | python xxx.py
+        #echo -e "http://ms.bdimg.com/dsp-image/1756536684.jpg\ttest/1756536684_1.jpg\t1\nhttp://ms.bdimg.com/dsp-image/571671431.jpg\ttest/571671431_0.jpg\t2" | python xxx.py
         quick_urls_2_imageFiles() 
 
     if tag == 'files_2_Ximage_AND_files_2_Ximage' or tag == 'all':
@@ -222,5 +237,5 @@ def test(tag):
         
 
 if __name__ == "__main__":
-    tag = 'all'
+    tag = 'quick_urls_2_imageFiles'
     test(tag)

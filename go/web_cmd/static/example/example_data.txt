@@ -1,3 +1,5 @@
+#!lcmd
+select_idx____0____6____1____2____3____4____7|add_head____image____url____txt____txt|html_table____KT
 图片	名称	标题	一级类目	二级类目	三级类目	链接	价格	评论数	周一销量	周二销量	周三销量	周四销量	周五销量	周六销量	周日销量
 http://localhost:8000/static/example/image/mobile.jpg	vivoiQOO	vivo iQOO 水滴全面屏超广角 高通骁龙855	手机			https://item.jd.com/47024922529.html	3298	22000	300	200	100	150	200	100	50
 http://localhost:8000/static/example/image/coat.jpg	yaya连衣裙	鸭鸭服饰（yaya）连衣裙小个子穿搭	服装	女装	连衣裙	https://item.jd.com/48109694042.html	168	1000	400	250	300	350	100	100	80

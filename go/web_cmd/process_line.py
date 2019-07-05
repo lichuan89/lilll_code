@@ -304,6 +304,32 @@ def add_head_index(tags=[0]):
         print line 
 
 
+def swap_row(tags):
+    lines = []
+    for line in sys.stdin:
+        if line[-1] == '\n':
+            line = line[: -1]
+        lines.append(line)
+
+    for i in range(0, len(tags), 2):
+        j, k = int(tags[i]), int(tags[i + 1])
+        lines[j], lines[k] = lines[k], lines[j]
+    for line in lines:
+        print line        
+
+
+def swap_col(tags):
+    lines = []
+    for line in sys.stdin:
+        if line[-1] == '\n':
+            line = line[: -1]
+        arr = line.split('\t')
+        for i in range(0, len(tags), 2):
+            j, k = int(tags[i]), int(tags[i + 1])
+            arr[j], arr[k] = arr[k], arr[j]
+        print '\t'.join(arr) 
+
+
 def add_const(tags):
     const = tags[0]
     idx = int(tags[1]) if len(tags) > 1 else 0
@@ -330,12 +356,20 @@ def select_field(tags):
 def transpose():
     arrs = [] 
     for line in sys.stdin:
-        line = line[:-1]
+        if line[-1] == '\n':
+            line = line[:-1]
         arr = line.split('\t')
         arrs.append(arr)
     for i in range(len(arrs[0])):
         arr = [v[i] for v in arrs]
         print '\t'.join(arr)
+
+def mirror():
+    for line in sys.stdin:
+        if line[-1] == '\n':
+            line = line[:-1]
+        arr = line.split('\t')
+        print '\t'.join(reversed(arr))
 
 def add_empty_head(tags=[1]):
     n = int(tags[0]) 
@@ -383,12 +417,13 @@ def html_table(tags=['']):
     i = 0 if 'K' in tag else 1
     types = [] if 'T' in tag else ['text']
     for line in sys.stdin:
-        line = line[:-1]
+        if line[-1] == '\n':
+            line = line[:-1]
         arr = line.split('\t')
         if types == []:
             types = arr
             continue
-        pre = '<td>'
+        pre = '<td style="word-wrap:break-word; white-space:normal; word-break:break-all;min-width:70px">'
         suf = "</td>"
         if i == 0 and line.strip() == '':
             i += 1
@@ -399,16 +434,17 @@ def html_table(tags=['']):
         if pre == "<th>" or len(arr) <= red_idx or (red_idx is None or arr[red_idx] == '0' or arr[red_idx] == '' or arr[red_idx] == '-'):
             tr = '<tr>'
         else:
-            pre = '<td style="background:#ffce9f">'
+            pre = '<td style="background:#ffce9f;word-wrap:break-word; white-space:normal; word-break:break-all;">'
             tr = '<tr style="border:solid red">' 
         for j in range(len(arr)):
             v = arr[j]
-            if j < len(types) and v.find('http') == 0:
+            if j < len(types) and (v.find('http') == 0 or v.find('/') != -1):
                 if types[j] == 'image':
                     arr[j] = '<img width=%d src="%s"/>' % (100, v)
                 elif types[j] == 'url':
                     txt = '...%s' % (v[-16:]) if len(v) > 16 else v
                     arr[j] = '<a href="%s" target="_blank">%s</a>' % (v, txt) 
+
 
         output = ["%s%s%s" % (pre, v, suf) for v in arr]
         sys.stdout.write('%s%s</tr>' % (tr, '\t'.join(output)))
@@ -476,7 +512,7 @@ def html_card(tags=['TK', 5, 150, 0, 0]):
         for j in range(len(keys)):
             td = ['<td %s><span class="none" style="width:%spx" >%s</span></td>' % (td_boder, 50, keys[j])]
             for k in range(len(arrs)):
-                vid = arrs[k][id_idx]  
+                vid = arrs[k][id_idx] if id_idx < len(arrs[k]) else 0 
                 v = arrs[k][j]
                 elem = v 
                 if types[j] == 'image':
@@ -485,7 +521,7 @@ def html_card(tags=['TK', 5, 150, 0, 0]):
                     txt = '...%s' % (v[-16:]) if len(v) > 16 else v
                     elem = '<a class="selecting_cell" value="%s" style="display:block;width:%spx" href="%s" target="_blank" onclick="select_cell(this, \'selecting_cell_label\')">%s</a>' % (vid, col_width, v, txt) 
                 else:
-                    elem = '<span class="none selecting_cell" value="%s" style="width:%spx" onclick="select_cell(this, \'selecting_cell_label\')" >%s</span>' % (vid, col_width, v)
+                    elem = '<span class="none selecting_cell" value="%s" style="width:%spx;word-wrap:break-word; white-space:normal; word-break:break-all;" onclick="select_cell(this, \'selecting_cell_label\')" >%s</span>' % (vid, col_width, v)
                 td.append('<td %s >%s</td>' % (td_boder, elem)) 
             print '<tr>%s</tr>' %  ''.join(td)
     print '</table>'

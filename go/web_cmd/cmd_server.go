@@ -6,6 +6,7 @@ package main
 
 import (
     "regexp"
+    "encoding/base64"
     "bytes"
     "errors"
     "fmt"
@@ -89,7 +90,27 @@ func Str_2_file(content string, fileName string) {
         return
     }
     l, err := f.WriteString(content)
-    //l, err := f.Write([]byte(content))
+    if err != nil {
+        fmt.Println(err)
+        f.Close()
+        return
+    }
+    fmt.Println(l, "bytes written successfully")
+    err = f.Close()
+    if err != nil {
+        fmt.Println(err)
+        return
+    }
+}
+func Byte_2_file(content []byte, fileName string) {
+    // https://blog.csdn.net/qq_34021712/article/details/86433918
+    f, err := os.Create(fileName)
+    if err != nil {
+        fmt.Println(err)
+        return
+    }
+    //l, err := f.WriteString(content)
+    l, err := f.Write([]byte(content))
     if err != nil {
         fmt.Println(err)
         f.Close()
@@ -333,7 +354,10 @@ func CmdAjax(res http.ResponseWriter, req *http.Request) {
     fmt.Printf("process input.cmd:[%s], sep:[%s], fpath:[%s]\n", cmd, sep, fpath)
 
     rule, _ := regexp.Compile("[^a-zA-Z0-9_]")
-    id := rule.ReplaceAllString(cmd, "__");
+    id := rule.ReplaceAllString(cmd, "_");
+    if len(id) > 100{
+        id = id[: 100] + "..."
+    }
     id = fmt.Sprintf("%s_%s_%d", id, GetNowTime(), GetGID)
 
     input_fpath := fmt.Sprintf("static/temp/%s.input.txt", id)
@@ -364,14 +388,16 @@ func CmdAjax(res http.ResponseWriter, req *http.Request) {
         temp_dir := "static/temp/" + tag
         MkDir(temp_dir)
         fmt.Printf("begin to upload files:[%s]\n", tag)
-        ret := ":cat " 
+        ret := "#!lcmd\n:cat " 
         for _, file := range files.([] interface {}) {
             fname := file.(map[string] interface {})["fname"].(string)
-            fcontext := file.(map[string] interface {})["data"].(string)
-            fcontext = u2s(fcontext)
+            //fcontext, _ := file.(map[string] interface {})["data"].([]byte)
+            fcontext, _ := base64.StdEncoding.DecodeString(file.(map[string] interface {})["data"].(string))
+            //fcontext, _ := file.(map[string] interface {})["data"].(string)
+            //fcontext = u2s(fcontext)
             wpath := temp_dir + "/" + fname
             fmt.Printf("upload file. fname:%s, tag:%s\n", fname, tag)
-            Str_2_file(fcontext, wpath)
+            Byte_2_file(fcontext, wpath)
             ret +=  " " + wpath
         }
         fmt.Fprintf(res, "%s\n%s\n%s\n%s", "", "", "", ret)

@@ -410,6 +410,8 @@ def simple_extract_skin(image):
 
 
 def sobel_gray_image(img):
+    if len(img.shape) == 3:
+        img = rgb_2_gray(img) 
     r, c = img.shape
     new_image = np.zeros((r, c))
     new_imageX = np.zeros(img.shape)
@@ -424,6 +426,11 @@ def sobel_gray_image(img):
             new_image[i+1, j+1] = min(new_imageX[i+1, j+1] * 0.5 + new_imageY[i+1, j+1] * 0.5, 255)
     return np.uint8(new_image) 
 
+
+def sobel(image):
+    gray_image = rgb_2_gray(image)
+    sobel_image = sobel_gray_image(gray_image)
+    return sobel_image
 
 def test(tag):
     from lcv2_common import cv2image_2_file, file_2_cv2image, cv2image_2_image, image_2_cv2image

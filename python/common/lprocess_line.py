@@ -18,7 +18,9 @@ from lcommon import json_2_str
 
 def cat():
     for line in sys.stdin:
-        print line[: -1]
+        if line[-1] == '\n':
+            line = line[: -1]
+        print line
 
 def match_str(tags):
     for line in sys.stdin:
