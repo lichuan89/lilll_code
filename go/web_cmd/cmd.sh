@@ -73,7 +73,7 @@ if [[ $cmd == "image_fmt" ]]; then
         }{
             pre="../../static/temp/"; s=NR; 
             for(i=1;i<=idx;i++) {
-                if ($i~/^http/) s = s "\t"$i;
+                if ($i~/^http/ || !($i~/\//)) s = s "\t"$i;
                 else s=s"\t"pre $i;
             } 
             for(i=idx+1;i<=NF;i++)s=s"\t"$i; print s;
@@ -108,5 +108,3 @@ fi
         exit 0
     exit 0
     cd - > /dev/null
-
-

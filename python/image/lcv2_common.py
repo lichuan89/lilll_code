@@ -187,7 +187,7 @@ def check_gray_muzzy(image, width):
             }
         return q, cache
     except IOError as error:
-        return None
+        return None, None
 
 
 def random_expand_image(image):

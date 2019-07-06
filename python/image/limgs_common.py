@@ -89,9 +89,17 @@ def quick_transform_image(input_path, output_path, func, size=(100, 100), prefix
         files = list_files(input_path)
     X, fnames = files_2_Ximage(files, size)
     X = [func(x) for x in X] if args is None else [func(x, args) for x in X]
+    if type(X[0]) == list and len(X[0]) == 2:
+        R = [x[1] for x in X]
+        X = [x[0] for x in X]
+    else:
+        R = ['' for x in X]
     if size[0] is not None and size[1] is not None:
         X = np.array(X)
     quick_XImage_2_files(X, None, output_path, fnames, prefix)
+    files = {}
+    for fname, r in zip(fnames, R):
+        files[fname] = r 
     return files 
 
 def quick_urls_2_imageFiles():

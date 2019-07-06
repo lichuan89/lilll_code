@@ -11,6 +11,21 @@ import lcv2_common
 import limg_common 
 from limgs_common import *
 
+
+def image_otsu(image, args=[]):
+    import cv2
+    image = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+    ret, otsu_image = cv2.threshold(image, 0, 255, cv2.THRESH_OTSU)
+    return otsu_image
+
+def image_muzzy(image, args=[100]):
+    import cv2
+    width = args[0]
+    #image = limg_common.rgb_2_gray(image)
+    image = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+    q, cache = lcv2_common.check_gray_muzzy(image, width)
+    return [cache['check_image'], q]
+
 def image_light(image, args=[1.0, 0]):
     #image_cmd: #image_light____l____0____2.3____20
     a = float(args[0]) if len(args) > 0 else 1
@@ -76,7 +91,11 @@ def process_path(tags=[]):
                 imgs[cur_path + arr[idx]] = '%s/%s\t%s' % (output_dir, f, line)
         files = quick_transform_image(imgs, output_path, func=eval(func), size=(None, 100), prefix="", args=args)
         for img, line in imgs.items():
-            print line 
+            f = img.split('/')[-1]
+            if f in files and files[f] != '':
+                print str(files[f]) + '\t' + line
+            else:
+                print line 
 
 if __name__ == "__main__":
     func_arg = sys.argv[1]

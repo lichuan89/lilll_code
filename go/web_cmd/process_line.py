@@ -63,8 +63,12 @@ def help():
     
     print ''
     print '4. 图片处理指令:'
-    print 'xxxxxxxxxxxxxx'
+    print '    xxxxxxxxxxxxxx'
 
+    print '5. 常用复杂命令:'
+    print '''
+        #image_ls____c|#image_muzzy____m____0|#image_sobel____s____-1|#image_otsu____o____0|mirror|#image_fmt____5|html_table____T 
+    '''
 
 def process_field(tags, func):
     """
