@@ -14,6 +14,7 @@ import json
 import hashlib
 import datetime
 import copy 
+import hashlib
 import re
 import fileinput
 import urllib
@@ -73,6 +74,7 @@ def str_2_json(uni):
     """
     obj = {}
     try:
+        #uni = uni.replace('\\\\"', '\\"')
         obj = json.loads(uni)
     except Exception as e:
         print >> sys.stderr, e
@@ -89,6 +91,14 @@ def json_2_str(obj):
     except Exception as e:
         return None 
 
+def json_2_fmt_str(obj, indent=4):
+    """  
+    json to str
+    """
+    try:    
+        return json.dumps(obj, sort_keys=True, indent=indent, ensure_ascii=False)
+    except Exception as e:
+        return ''
 
 def file_2_str(fpath, decode=None):
     """
@@ -171,10 +181,10 @@ def get_domains(url):
                 arr.append(''.join(elem[1:]))
         return arr 
     else:   
-        return [domain]
+        return [url]
 
 
-def expand_json(obj, sep='----', is_simple_key=True, path=[]):
+def expand_json(obj, sep='----', is_simple_key=True, is_merge_basic_list=False, path=[]):
     """
     将json展开成一个扁平的dict, is_simple_key=False, 则使用全路径;
     is_simple_key=True, 则将冲突的val合并.
@@ -191,24 +201,24 @@ def expand_json(obj, sep='----', is_simple_key=True, path=[]):
     kvs = {}
     kns = {}
     path_key = sep.join(path)
+    if is_simple_key:
+        path_key = path[-1] if path != [] else ''
     if type(obj) == dict:
+        kns[path_key] = json_2_str(obj)
         for k, v in obj.items():
-            o1, o2 = expand_json(v, sep, is_simple_key, path + [k])
+            o1, o2 = expand_json(v, sep, is_simple_key, is_merge_basic_list, path + [k])
             kvs = merge_dict(kvs, o1)
             kns = merge_dict(kns, o2)
-        kns['%s%sdict' % (path_key, sep)] = len(obj)
+    elif type(obj) == list and is_merge_basic_list and True not in [(type(i) == list or type(i) == dict) for i in obj]:
+        kvs[path_key] = sep.join([unicode(v) for v in obj]) 
     elif type(obj) == list:
+        kns[path_key] = json_2_str(obj)
         for i in range(len(obj)):
-            o1, o2 = expand_json(obj[i], sep, is_simple_key, path + [unicode(i)])
+            o1, o2 = expand_json(obj[i], sep, is_simple_key, is_merge_basic_list, path + [unicode(i)])
             kvs = merge_dict(kvs, o1)
             kns = merge_dict(kns, o2)
-        kns['%s%slist' % (path_key, sep)] = len(obj)
     else:
-        if is_simple_key:
-            kvs[path[-1] if path != [] else ''] = obj
-        else:
-            kvs[path_key] = obj
-        
+        kvs[path_key] = obj
 
     return kvs, kns 
 
@@ -262,7 +272,7 @@ def expand_pair(obj, pair_keys, pair_vals):
             del obj[pair_val] 
         else:
             for k, v in obj.items():
-                obj[k] = expand_pair(v, pair_keys, pair_vals) 
+                obj[k] = expand_pair(v, pair_keys, pair_vals)
     elif type(obj) == list:
         count = 0 
         for v in obj: 
@@ -292,7 +302,10 @@ def numdict_2_list(obj):
             arr = []
             for i in range(cnt):
                 arr.append(obj[i] if i in obj else obj[str(i)])
-            obj = [numdict_2_list(v) for v in arr] 
+            obj = [numdict_2_list(v) for v in arr]
+        else:
+            for k, v in obj.items():
+                obj[k] = numdict_2_list(v) 
     elif type(obj) == list:
         obj = [numdict_2_list(v) for v in obj]
     return obj
@@ -320,8 +333,68 @@ def unexpand_json(obj, sep='----'):
     o = numdict_2_list(o)
     return o
         
+def find_map(obj, reg):
+    output = {}
+    for k in obj:
+        if re.search(reg, k) is not None:
+            output[k] = obj[k]
+    return output
+
+def crawl(url, decode=None, post_data='', header_map={}, is_encode_post_data=True):
+    """
+    抓取网页, 如果post_data为{}则用get方法抓取网页
+    """     
+    if is_encode_post_data:
+        post_data = urllib.urlencode(post_data)
+    else:
+        post_data = json.dumps(post_data)
+    try:
+        headers = {
+                'User-Agent': 'Mozilla/5.0 (Windows; U; Windows NT 6.1;' + \
+                ' en-US; rv: 1.9.1.6) Gecko/20091201 Firefox/3.5.6', # 针对服务器限制
+                'Referer': 'http://douban.com' # 针对防盗链限制
+                }
+        for key in header_map:
+            headers[key] = header_map[key]
+        if post_data == {}:
+            req = urllib2.Request(url, headers=headers)
+        else:
+            req = urllib2.Request(url, data = post_data, headers=headers)
+        res = urllib2.urlopen(req, timeout = 10)
+        code = res.getcode()
+        if code < 200 or code >= 300:
+            return None
+        t = res.headers.dict['content-type']
 
 
+        context = res.read()
+
+        m = re.search('charset=(.*?)(?:;|$)', t)
+        if decode is not None:
+            if m is not None:
+                decode = m.groups()[0]
+            context = context.decode(decode, 'ignore')
+        return context
+    except Exception as e:
+        if isinstance(e, urllib2.HTTPError):
+            log('http error: {0}'.format(e.code))
+        elif isinstance(e, urllib2.URLError): # and isinstance(e.reason, socket.timeout):
+            log('url error: socket timeout {0}'.format(e.__str__()))
+        else:
+            log('misc error: ' + e.__str__())
+        return None
+
+
+def md5(input):
+    """
+    md5
+    """
+    md5sign = hashlib.md5()
+    md5sign.update(input)
+    str = md5sign.digest()
+    data = struct.unpack("IIII", str)
+    md5value = data[0] << 96 | data[1] << 64 | data[2] << 32 | data[3] 
+    return md5value
 def test(opt):
     if opt == "file_opt" or opt == "all":
         clear_dir('tmp.muti_process')
@@ -335,16 +408,22 @@ def test(opt):
     if opt == 'expand_json' or opt == 'all':
         obj = [
             'v1',
-            {'k2': 'v2', 'k3': 'v3', 'k4': [5, 6], 'k5': [{'key': 'k6', 'val': 'k7'}, {'key': 'k8', 'val': 'k9'}]},
-            {'k2': 'v10'} 
+            {'k2': ['v2'], 'k3': 'v3', 'k4': [5, 6]},
+            {'k2': ['v10', {}]} 
         ]
-        print obj
-        print expand_json(obj, '____')[0]
-        print "obj:", obj
-        o, r = expand_json(obj, '____', is_simple_key=False)
-        print "expand_json:", o 
-        print "unexpand_json:" ,unexpand_json(o, sep='____')
-        print expand_pair(obj, 'key', 'val')
+        print 'ori:', obj
+        print 'expand_json 1:', expand_json(obj, '____')
+        print 'expand_json 2:', expand_json(obj, '____', False)
+        print 'expand_json 3:', expand_json(obj, '____', True, True)
+        o = expand_json(obj, '____', False, False)
+        print 'ori:', o[0]
+        print 'unexpand_json:', unexpand_json(o[0], '____')
+        obj ={ 
+            'k1': {'key': 1, 'val': 2},
+            'k2': [{'key': 11, 'val': 22}, {'key': 10, 'val': 20}],
+        }
+        print 'ori: ', obj
+        print 'expand_pair: ', expand_pair(obj, 'key', 'val')
     
         data = {
             "name":"flare",
@@ -388,6 +467,10 @@ def test(opt):
         obj = {'0': '00', '1': '11', '2': [{4: 1}, {0:5}]}
         print obj 
         print numdict_2_list(obj)
+
+    if opt == 'crawl' or opt == 'all':
+        ret = crawl('http://fxhh.jd.com/detail.html?id=173238717')
+        print ret
 if __name__ == "__main__":
     opt = "all"
     test(opt)

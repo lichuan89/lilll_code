@@ -21,9 +21,27 @@ from lcommon import get_domains
 from lcommon import expand_json
 from lcommon import expand_pair
 from lcommon import unexpand_pair
+from lcommon import find_map 
 from lcommon import unexpand_json 
 from lcommon import file_2_str 
 from lprocess_line import *
+
+
+
+def history(tags=['100']):
+    n = int(tags[0])
+    fpath = 'static/temp/cmd.history.txt'
+    data = file_2_str(fpath)
+    data = list(reversed(data.split('\n')))[: n + 1]
+    for line in data:
+        arr = line.split('\t')
+        if len(arr) < 3:
+            continue
+        cmd, fpath, context = arr[: 3] 
+        print cmd
+        print fpath
+        print context
+        print  
 
 
 def help():
@@ -32,7 +50,7 @@ def help():
     print '1. 例子数据:\n%s\n%s' % (data_fpath, data)
     print ''
     print '''2. 例子指令:
-        shell指令\t:awk -F"\t" '{if($8~/^[0-9.]+$/) {s+=$8;n+=1}}END{print "平均价格:"s/n;}'
+        shell指令\t:awk -F"\\t" '{if($8~/^[0-9.]+$/) {s+=$8;n+=1}}END{print "平均价格:"s/n;}'
         自定义sh指令\t#restart
         选择列\tselect_idx____0____6____1____7
         随机排序\tshuffle|:head -6
@@ -42,6 +60,9 @@ def help():
         曲线\t:head -4|select_idx____1____9____10____11____12____13____14____15|chart_curve
         饼图\t:head -5|select_idx____1____9____10____11____12____13____14____15|del_head____1|add_head____sale____1____2____3____4____5____6____7|transpose|chart_pie
         树图\tselect_idx____3____4____5|del_head____1|chart_tree____field
+        处理图像\tselect_idx____0____1|#image_crawl____c|select_idx____0____2|#image_light____l____-2____2.3____20|#image_ycrcb____y____-2|#image_skin____skin____-2|#image_sobel____s____-2|#image_expand____e____-2|#image_rotate____r____-2____60|#image_muzzy____m____-2|mirror|#image_fmt____10|add_head____id____name____ori____light____ycrcb____skin____sobel____expand____rorate____muzzy____muzzy_score|swap_row____0____1|html_table____KT
+        上一次命令的输出作为输入\t|
+        上上次命令的输出作为输入\t||
         运行管道命令\t$
 '''
 
@@ -88,17 +109,21 @@ def process_field(tags, func):
             v = func(line)
         else:
             arr = line.split('\t')
-            v = arr[idx]
-            if encode != 'none':
-                v = v.encode(encode, 'ignore')
-            v = func(v)
-            if last_encode != 'none':
-                v = v.encode(last_encode, 'ignore')
-        if tag == 'replace':
-            arr[idx if idx != 'a' else 0] = v
-        else:
-            arr.append(v)
+            if idx < len(arr):
+                v = arr[idx]
+                if encode != 'none':
+                    v = v.encode(encode, 'ignore')
+                v = func(v)
+            else:
+                v = ''
+        if  idx == 'a' or idx < len(arr):
+            if tag == 'replace':
+                arr[idx if idx != 'a' else 0] = v
+            else:
+                arr.append(v)
         output = '\t'.join(arr)
+        if last_encode != 'none':
+            output = output.encode(last_encode, 'ignore')
         print output
 
 def shuffle():
@@ -112,12 +137,34 @@ def shuffle():
         print line
 
 
-def parse_json(tags):
-    idx = int(tags[0])
+def expand_json_pair(tags):
+    """
+    将{"key": key, "val": val}转换为{key: val}
+    """
+    idx = int(tags[0]) 
     keys = tags[1].split('^')
-    pair_key = tags[2] if len(tags) >= 4 else ''
-    pair_val = tags[3] if len(tags) >= 4 else ''
-    is_simple_key = (tags[4] == '1') if len(tags) >= 5 else True
+    vals = tags[2].split('^') 
+    for line in sys.stdin:
+        if line[-1] == '\n':
+            line = line[:-1]
+        line = line.decode('utf8', 'ignore')
+        arr = line.split('\t')
+        obj = str_2_json(arr[idx])
+        if obj is None:
+            continue
+        obj = expand_pair(obj, keys, vals)
+        arr[idx] = json_2_str(obj)
+        print '\t'.join(arr).encode('utf8', 'ignore')
+
+
+def parse_json(tags):
+    """
+    对第idx个字段解json, 先按(pair_key, pair_val)方式压缩,然后取字段keys替代原json所在字段
+    """
+    idx = int(tags[0]) # 对第idx个字段进行解析
+    keys = tags[1].split('^') if len(tags) > 1 else [] # 提取字段,字段名以^分割 
+    is_simple_key = (tags[2] == '1') if len(tags) > 2 else True 
+    use_regex = (tags[3] == '1') if len(tags) > 3 else True 
     i = 0 
     for line in sys.stdin:
         if line[-1] == '\n':
@@ -127,13 +174,52 @@ def parse_json(tags):
         obj = str_2_json(arr[idx])
         if obj is None:
             continue
-        if pair_key != '':
-            obj = expand_pair(obj, pair_key, pair_val)
-        kvs, kns = expand_json(obj, sep="____", is_simple_key=is_simple_key)
-        vs = [kvs[k] if k in kvs else '' for k in keys]
+        kvs, kns = expand_json(obj, sep="___", is_simple_key=is_simple_key)
+        if keys != [] and keys != ['']:
+            vs = [kvs[k] if k in kvs else '' for k in keys]
+            vs = []
+            for k in keys:
+                if not use_regex:
+                    if k in kvs:
+                        vs.append(kvs[k])
+                    elif k in kns:
+                        vs.append(kns[k])
+                    else:
+                        vs.append('')
+                else:
+                    f = find_map(kvs, k)
+                    if f == {}:
+                        f = find_map(kns, k)
+                    vs.append('####'.join(f.values()))
+        else:
+            vs = ['###'.join(['###'.join(i) for i in kvs.items()])]
         output = arr[: idx] + vs + arr[idx + 1:]
         print '\t'.join(output).encode('utf8', 'ignore')
 
+
+def expand_pairs(tags):
+    # 将 k1 sep v1 sep k2 sep v2 ... 分解到多行
+    idx = int(tags[0])
+    pair_sep = tags[1] if len(tags) > 1 and tags[1] != '' else '____'
+    inner_sep = tags[2] if len(tags) > 2 and tags[2] != '' else '____'   
+    for line in sys.stdin:
+        if line[-1] == '\n':
+            line = line[:-1]
+        arr = line.split('\t')
+        if len(arr) > idx + 1:
+            print line
+            continue
+        if pair_sep == inner_sep:
+            kvs = re.split(pair_sep, arr[idx])
+            for i in range(0, len(kvs), 2):
+                arr[idx] = '\t'.join([kvs[i], kvs[i + 1]])
+                print '\t'.join(arr)
+        else:
+            pairs = re.split(pair_sep, arr[idx]) 
+            for kv in pairs:
+                k, v = re.split(inner_sep, kv)
+                arr[idx] = '\t'.join([k, v])
+                print '\t'.join(arr)
 
 def base64_field(tags=['a', 'replace', 'none', 'none', 'none']):
     process_field(tags, lambda v: base64.b64encode(v))
@@ -159,10 +245,13 @@ def gbk_field(tags=['a', 'replace', 'utf8', 'none', 'gbk']):
 def utf8_field(tags=['a', 'replace', 'gbk', 'none', 'utf8']):
     process_field(tags, lambda v: v)
 
-def domain_field(tags=[0, 'append']):
+def domain_field(tags=[0, 'append', 'utf8', 'none', 'utf8']):
+    default_tags=[0, 'append', 'utf8', 'none', 'utf8']
+    if len(tags) < len(default_tags):
+        tags = tags + default_tags[len(tags):]
     def get_domain(url):
         domains = get_domains(url)
-        return domains[-1] if domains != [] else ''
+        return domains[-1] if domains != [] and domains[0] != url else ''
     process_field(tags, func=get_domain)
 
 
@@ -206,9 +295,9 @@ def split_line(tags=['\t']):
             print v.encode('utf8', 'ignore')  
 
 
-def rsearch(tag):
+def research(tag):
     rule = tag[0].decode('utf8', 'ignore')
-    idx = tag[1] if len(tag) >= 2 else 'all'
+    idx = tag[1] if len(tag) >= 2 and tag[1] != 'a' else 'all'
     for line in sys.stdin:
         line = line[:-1].decode('utf8', 'ignore')
         arr = line.split('\t')
@@ -216,7 +305,24 @@ def rsearch(tag):
         if re.search(rule, v) is not None: 
             print '\t'.join(arr).encode('utf8', 'ignore')
 
-def rrsearch(tag):
+def rereplace(tag):
+    rule = tag[0].decode('utf8', 'ignore')
+    val = tag[1].decode('utf8', 'ignore')
+    idx = tag[2] if len(tag) >= 3 and tag[2] != 'a' else 'all'
+
+    rule = re.compile(rule)
+    for line in sys.stdin:
+        line = line[:-1].decode('utf8', 'ignore')
+        arr = line.split('\t')
+        v = line if idx == 'all' else arr[int(idx)]
+        v = rule.sub(val, v)
+        if idx != 'all':
+            arr[int(idx)] = v
+        else:
+            arr = [v]
+        print '\t'.join(arr).encode('utf8', 'ignore')
+
+def rresearch(tag):
     rule = tag[0].decode('utf8', 'ignore')
     idx = tag[1] if len(tag) >= 2 else 'all'
     for line in sys.stdin:
@@ -385,7 +491,7 @@ def add_empty_head(tags=[1]):
 
 def add_head(tags=[]):
     line = '\t'.join(tags)
-    print line
+    print line.encode('utf8', 'ignore')
     for line in sys.stdin:
         line = line[:-1]
         print line 
