@@ -82,9 +82,14 @@ func GetGID() uint64 {
        return n
 }
 
-func Str_2_file(content string, fileName string) {
+func Str_2_file(content string, fileName string, is_append bool) {
     // https://blog.csdn.net/qq_34021712/article/details/86433918
-    f, err := os.Create(fileName)
+    mod := os.O_CREATE|os.O_RDWR
+    if is_append {
+        mod = os.O_CREATE|os.O_APPEND|os.O_RDWR
+    }
+    //f, err := os.Create(fileName)
+    f, err := os.OpenFile(fileName, mod, 0660)
     if err != nil {
         fmt.Println(err)
         return
@@ -158,6 +163,20 @@ func File_2_str(fileName string, row_num int) string {
         }
     }
     return strings.Join(lines, "")
+}
+
+func File_2_dict(fileName string) map[string] string {
+    str := File_2_str(fileName, -1)
+    lines := strings.Split(str, "\n")
+    hash := map[string] string {}
+    for _, line := range lines{
+        fields := strings.Split(line, "\t")
+        if len(fields) < 2 {
+            continue
+        }
+        hash[fields[0]] = fields[1]
+    }
+    return hash
 }
 
 func json_2_str(obj interface{}) string {
@@ -261,13 +280,53 @@ func exec_shell(s string) (string, error){
 func parse_cmd(cmd string, log_fpath string) string {
     arr := strings.Split(cmd, "|")
     cmds := [] string{}
+
+    // 使用命令替换
+    tmp_arr := []string {}
+    cmd_map := File_2_dict("cmd_map.list")
+    for _, cmd := range(arr){
+        split_cmd := strings.Split(cmd, "____")
+        split_cmd_key := split_cmd[0]
+        v, ok := cmd_map[split_cmd_key]
+        if ok {
+            subs := strings.Split(v, "|")
+            if len(subs) > 0{
+                split_cmd[0] = subs[len(subs) - 1]
+                subs[len(subs) - 1] = strings.Join(split_cmd, "____") 
+            }
+            for _, sub := range(subs) {
+                tmp_arr = append(tmp_arr, sub)
+            }
+        } else {
+            tmp_arr = append(tmp_arr, cmd)
+        }
+    }
+    fmt.Printf("replace cmd. form:[%s], to:[%s]\n", arr, tmp_arr)
+    arr = tmp_arr
+
+    // 使用输出数据栈中的数据作为这一次输入
+    idx := -1
+    for _, ch := range(cmd) {
+        if ch == '|' {
+            idx += 1
+        } else {
+            break 
+        }
+    }
+    if cmd == "" || len(cmd) == idx + 1{
+        idx += 1
+    }
+    if idx != -1 {
+        s := fmt.Sprintf("cat static/temp/pipeline.%d.txt", idx) // 默认最近第idx次输出, 从0开始
+        cmds = append(cmds, s)
+    }
     for _, v := range arr{
-        if v[: 1] == ":" {
-            fmt.Println(v[: 1]) 
+        if v == "" {
+            continue
+        } else if v[: 1] == ":" {
             s := fmt.Sprintf("%s 2> %s", v[1: ], log_fpath)
             cmds = append(cmds, s)
         } else if v[: 1] == "#" {
-            fmt.Println(v[: 1])
             s := fmt.Sprintf("/bin/bash cmd.sh '%s' 2> %s", v[1: ], log_fpath)
             cmds = append(cmds, s)
         } else {
@@ -289,7 +348,7 @@ func EchoAjax(res http.ResponseWriter, req *http.Request) {
     if len(arr) > 1{
         context = strings.Join(arr[1: ], "\n")
         fmt.Printf("get EchoAjax. context:[%s]", context) 
-        Str_2_file(context, fpath)
+        Str_2_file(context, fpath, false)
     } else {
         context = File_2_str(fpath, -1)
         fmt.Printf("send EchoAjax. context:[%s]", context)
@@ -330,9 +389,13 @@ func CmdAjax(res http.ResponseWriter, req *http.Request) {
     str, _ := ioutil.ReadAll(req.Body)
     s := string(str)
     arr := strings.Split(s, "\n")
+    if len(arr) == 1 {
+        arr = append(arr, "")
+    }
 
     // 输入格式为: 命令 \n 数据文件路径 or 数据内容(tab或|分割)
     cmd := arr[0]
+    ori_cmd := cmd
     context := strings.Join(arr[1:], "\n")
     sep := "\t"
     fpath := ""
@@ -410,7 +473,7 @@ func CmdAjax(res http.ResponseWriter, req *http.Request) {
         script = fmt.Sprintf("%s >  %s", cmd, output_fpath)
     } else {
         fmt.Printf("write input file. path:[%s], context:[%s]\n", input_fpath, context)
-        Str_2_file(context, input_fpath)
+        Str_2_file(context, input_fpath, false)
         script = fmt.Sprintf("cat %s | %s > %s", input_fpath, cmd, output_fpath) 
     }
     fmt.Printf("run script. cmd:[%s]\n", script)
@@ -420,4 +483,21 @@ func CmdAjax(res http.ResponseWriter, req *http.Request) {
     fmt.Fprintf(res, "%s\n%s\n%s\n%s", input_url, output_url, log_url, ret)
     //fmt.Printf("response output.cmd:[%s], sep:[%s], fpath:[%s], context:[%s], res:[%s], output_fpath:[%s]\n", cmd, sep, fpath, context, ret, output_url)
     fmt.Printf("response output.cmd:[%s], sep:[%s], fpath:[%s], res:[%s], output_fpath:[%s]\n", cmd, sep, fpath, ret, output_url)
+    is_check := true 
+    for _, ch := range(ori_cmd) {
+        if ch != '|' {
+            is_check = false 
+        }
+    }
+    fmt.Printf("ori_cmd:[%s], is_check:[%s]", ori_cmd, is_check)
+    if ! is_check { 
+        for i := 5; i >= 1; i-- { 
+            dst := fmt.Sprintf("static/temp/pipeline.%d.txt", i)
+            src := fmt.Sprintf("static/temp/pipeline.%d.txt", i - 1)
+            Str_2_file(File_2_str(src, -1), dst, false)
+        } 
+        Str_2_file(ret, "static/temp/pipeline.0.txt", false) 
+        history := fmt.Sprintf("%s\t%s\t%s\n", ori_cmd, input_fpath, arr[1])
+        Str_2_file(history, "static/temp/cmd.history.txt", true) 
+    }
 }
