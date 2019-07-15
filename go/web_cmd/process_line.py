@@ -14,6 +14,7 @@ import time
 import datetime
 import random
 import urllib
+from lcommon import log 
 from lcommon import str_2_json
 from lcommon import json_2_str
 from lcommon import str_2_file
@@ -24,6 +25,7 @@ from lcommon import unexpand_pair
 from lcommon import find_map 
 from lcommon import unexpand_json 
 from lcommon import file_2_str 
+from lcommon import smart_str_list
 from lprocess_line import *
 
 
@@ -90,41 +92,6 @@ def help():
     print '''
         #image_ls____c|#image_muzzy____m____0|#image_sobel____s____-1|#image_otsu____o____0|mirror|#image_fmt____5|html_table____T 
     '''
-
-def process_field(tags, func):
-    """
-    tags = [序号(a表示全行), 扩展/替换, 解码(none表示不操作), 编码后处理(none表示不操作), 最终编码]
-    """
-    idx = int(tags[0]) if tags[0] != 'a' else tags[0]
-    tag = tags[1] if len(tags) >= 2 else 'append'
-    decode = tags[2] if len(tags) >= 3 else 'utf8'
-    encode = tags[3] if len(tags) >= 4 else 'none'
-    last_encode = tags[4] if len(tags) >= 5 else decode
-    for line in sys.stdin:
-        line = line[: -1]
-        if decode != 'none': 
-            line = line.decode(decode, 'ignore')
-        if idx == 'a':
-            arr = [line]
-            v = func(line)
-        else:
-            arr = line.split('\t')
-            if idx < len(arr):
-                v = arr[idx]
-                if encode != 'none':
-                    v = v.encode(encode, 'ignore')
-                v = func(v)
-            else:
-                v = ''
-        if  idx == 'a' or idx < len(arr):
-            if tag == 'replace':
-                arr[idx if idx != 'a' else 0] = v
-            else:
-                arr.append(v)
-        output = '\t'.join(arr)
-        if last_encode != 'none':
-            output = output.encode(last_encode, 'ignore')
-        print output
 
 def shuffle():
     lines = []
@@ -193,9 +160,26 @@ def parse_json(tags):
                     vs.append('####'.join(f.values()))
         else:
             vs = ['###'.join(['###'.join(i) for i in kvs.items()])]
+        vs = [v.replace('\t', ' ').replace('\n', '\r') for v in vs]
         output = arr[: idx] + vs + arr[idx + 1:]
         print '\t'.join(output).encode('utf8', 'ignore')
 
+
+def expand_fields(tags):
+    idx = int(tags[0])
+    sep = tags[1] if len(tags) <= 2 else '____' 
+    for line in sys.stdin:
+        if line[-1] == '\n':
+            line = line[:-1]
+        line = line.decode('utf8')
+        arr = line.split('\t')
+        if idx < len(arr): 
+            fields = arr[idx].split(sep)
+            for i in range(len(fields)):
+                arr[idx] = '%s\t%s' % (i, fields[i])
+                print '\t'.join(arr).encode('utf8', 'ignore')
+        else:
+            print line
 
 def expand_pairs(tags):
     # 将 k1 sep v1 sep k2 sep v2 ... 分解到多行
@@ -221,39 +205,6 @@ def expand_pairs(tags):
                 arr[idx] = '\t'.join([k, v])
                 print '\t'.join(arr)
 
-def base64_field(tags=['a', 'replace', 'none', 'none', 'none']):
-    process_field(tags, lambda v: base64.b64encode(v))
-    
-
-def unbase64_field(tags=['a', 'replace', 'none']):
-    process_field(tags, lambda v: base64.b64decode(v))
-
-def encode_field(tags=['a', 'replace', 'none']):
-    process_field(tags, lambda v: v)
- 
-def quote_field(tags):
-    process_field(tags, lambda v: urllib.quote(v))
-
-
-def unquote_field(tags):
-    process_field(tags, lambda v: urllib.unquote(v))
-
-
-def gbk_field(tags=['a', 'replace', 'utf8', 'none', 'gbk']):
-    process_field(tags, lambda v: v)
-
-def utf8_field(tags=['a', 'replace', 'gbk', 'none', 'utf8']):
-    process_field(tags, lambda v: v)
-
-def domain_field(tags=[0, 'append', 'utf8', 'none', 'utf8']):
-    default_tags=[0, 'append', 'utf8', 'none', 'utf8']
-    if len(tags) < len(default_tags):
-        tags = tags + default_tags[len(tags):]
-    def get_domain(url):
-        domains = get_domains(url)
-        return domains[-1] if domains != [] and domains[0] != url else ''
-    process_field(tags, func=get_domain)
-
 
 def sum_field(tags):
     idxs = [int(v) for v in tags]
@@ -274,16 +225,6 @@ def sum_field(tags):
         print '\t'.join(arr).encode('utf8', 'ignore')
 
 
-def split_field(tags=['\t']):
-    sep = tags[0]
-    for line in sys.stdin:
-        if line[-1] == '\n':
-            line = line[: -1]
-        line = line.decode('utf8', 'ignore')
-        arr = re.split(sep, line) 
-        print '\t'.join(arr).encode('utf8', 'ignore')  
-
-
 def split_line(tags=['\t']):
     sep = tags[0]
     for line in sys.stdin:
@@ -294,43 +235,6 @@ def split_line(tags=['\t']):
         for v in arr:
             print v.encode('utf8', 'ignore')  
 
-
-def research(tag):
-    rule = tag[0].decode('utf8', 'ignore')
-    idx = tag[1] if len(tag) >= 2 and tag[1] != 'a' else 'all'
-    for line in sys.stdin:
-        line = line[:-1].decode('utf8', 'ignore')
-        arr = line.split('\t')
-        v = line if idx == 'all' else arr[int(idx)]
-        if re.search(rule, v) is not None: 
-            print '\t'.join(arr).encode('utf8', 'ignore')
-
-def rereplace(tag):
-    rule = tag[0].decode('utf8', 'ignore')
-    val = tag[1].decode('utf8', 'ignore')
-    idx = tag[2] if len(tag) >= 3 and tag[2] != 'a' else 'all'
-
-    rule = re.compile(rule)
-    for line in sys.stdin:
-        line = line[:-1].decode('utf8', 'ignore')
-        arr = line.split('\t')
-        v = line if idx == 'all' else arr[int(idx)]
-        v = rule.sub(val, v)
-        if idx != 'all':
-            arr[int(idx)] = v
-        else:
-            arr = [v]
-        print '\t'.join(arr).encode('utf8', 'ignore')
-
-def rresearch(tag):
-    rule = tag[0].decode('utf8', 'ignore')
-    idx = tag[1] if len(tag) >= 2 else 'all'
-    for line in sys.stdin:
-        line = line[:-1].decode('utf8', 'ignore')
-        arr = line.split('\t')
-        v = line if idx == 'all' else arr[int(idx)] 
-        if re.search(rule, v) is None: 
-            print '\t'.join(arr).encode('utf8', 'ignore')
 
 def save(tags):
     fpath = tags[0]
@@ -387,7 +291,7 @@ def select_idx(tags):
     for line in sys.stdin:
         line = line[:-1].decode('utf8')
         arr = line.split('\t')
-        output = [arr[idx] for idx in idxs]
+        output = [arr[idx] if idx < len(arr) else '' for idx in idxs]
         print '\t'.join(output).encode('utf8', 'ignore')
 
 
@@ -439,17 +343,6 @@ def swap_col(tags):
             arr[j], arr[k] = arr[k], arr[j]
         print '\t'.join(arr) 
 
-
-def add_const(tags):
-    const = tags[0]
-    idx = int(tags[1]) if len(tags) > 1 else 0
-    for line in sys.stdin:
-        line = line[:-1].decode('utf8')
-        arr = line.split('\t')
-        output = arr[: idx] + [const] + arr[idx: ]
-        print '\t'.join(output).encode('utf8')
-    
-        
 
 def select_field(tags):
     keys = {} 
@@ -1348,17 +1241,39 @@ def print_chart_js():
     '''
     print html 
 
-if __name__ == "__main__":
-    func_arg = sys.argv[1].strip()
-    arr = func_arg.split('____')
-    if True: #try:
-        if len(arr) == 1:
+
+
+def arg_2_func(string):
+    """
+    从lprocess_line.py复制过来的函数 
+    """
+    # 将字符串转换为参数list
+    arr = smart_str_list(string, use_end_ch=False)
+    arr = [v.decode('utf8', 'ignore') for v in arr]
+    #try:
+    if True:
+        if arr == []:
+            log('notice', 'arg_2_func with no func. {0}'.format(arr))
+            return None
+        elif len(arr) == 1: # ____select_idx --> select_idx() 
+            log('notice', 'arg_2_func with no arg. {0}'.format(func))
             func = arr[0]
-            eval(func)()
+            output = eval(func)()
+        elif arr[1] != '': # ____select_idx____0a____xx --> process_lines(select_idx, [0a, xx])
+            func = arr[0] 
+            log('notice', 'arg_2_func with mod arg. {0} {1} {2}'.format('process_lines', func, arr[1: ]))
+            output = process_lines(eval(func), arr[1:])
         else:
             func = arr[0]
-            arg = [v.decode('utf8', 'ignore') for v in arr[1:]]
-            eval(func)(arg)
+            arg = arr[2: ] # ____select_idx________xx --> select_idx([xx]) 
+            log('notice', 'arg_2_func with no mod arg. {0} {1}'.format(func, arr[2: ]))
+            output = eval(func)(arg)
     #except Exception as e: 
-    #    cat()
-    #    print >> sys.stderr, "failed to parse. err:", e 
+    #    print >> sys.stderr, "failed to process.", e, sys._getframe().f_lineno
+    #    return None 
+    return output
+
+
+if __name__ == "__main__":
+    func_arg = sys.argv[1]
+    arg_2_func(func_arg)
