@@ -10,19 +10,25 @@ import traceback
 import base64
 import re
 import sys
+import random 
 import time
 import datetime
 import urllib
 from lcommon import str_2_json
 from lcommon import json_2_str
 from lcommon import smart_str_list 
+from lcommon import expand_pair 
+from lcommon import json_2_kvs 
 from lcommon import log 
+from lcommon import crawl 
 
 g_rule = {
-    '<tab>': '\t',
-    '<space>' : ' ',
-    '<stand>' : '|',
-}
+        '<TAB>' : '\t',
+        '<SPACE>': ' ',
+        '<VERT>': '|',
+        '<UNDER>': '_',
+        '<2UNDER>': '__',
+    }
 
 def cat(us, tags=[]):
     return us
@@ -84,7 +90,7 @@ def rereplace(us, tags):
     us = rule.sub(val, us)
     return us
 
-def select_col(us, tags): # 模式选全字段
+def cols(us, tags): # 模式选全字段
     idxs = [int(i) for i in tags]
     arr = us.split('\t')
     output = []
@@ -93,12 +99,40 @@ def select_col(us, tags): # 模式选全字段
         output.append(v)
     return '\t'.join(output)
 
+def random(us, tags=[0.5]):
+    thre = float(tags[0])
+    prob = random.random()
+    if prob < thre:
+        return us
+    else:
+        return None
 
-def add_const(us, tags):
+def const(us, tags):
     const = tags[0]
-    pos = tags[1] if len(tags) > 1 else 'after'
-    return '%s\t%s' % (us, const) if pos == 'after' else '%s\t%s' % (const, us)
+    return const 
     
+
+def json2kvs(us, tags):
+    keys = tags
+    obj = str_2_json(us) 
+    kvs = json_2_kvs(obj, keys)
+    output = [unicode(kvs[k]) if k in kvs else '' for k in keys]
+    return '\t'.join(output)
+
+def json2unpair(us, tags): 
+    keys = tags[0].split(',')
+    vals = tags[1].split(',')
+    obj = str_2_json(us) 
+    o = expand_pair(obj, keys, vals)
+    if o is None:
+        o = obj
+    return json_2_str(o)  
+
+def html(us, tags=['utf8']):
+    decode = tags[0] if len(tags) > 0 else 'utf8'
+    url = us.encode('utf8', 'ignore')
+    data = crawl(url, decode).replace('\n', '\r')
+    return data 
 
 def process_lines(process_col, arr, lines=None):
     """
@@ -108,7 +142,7 @@ def process_lines(process_col, arr, lines=None):
     # 第一个参数开头的数字表示处理的列序号
     i = 0
     s = arr[0]
-    while s[i] == '-' or '0' <= s[i] <= '9':
+    while i < len(s) and (s[i] == '-' or '0' <= s[i] <= '9'):
         i += 1
     idx = s[: i] # 为空表示处理整行
     idx = int(idx) if idx != '' else ''
@@ -138,21 +172,31 @@ def process_lines(process_col, arr, lines=None):
         arr = line.split('\t')
         if idx == '':
             arr = [line]
-            idx = 0
-        s = arr[idx]
+            index = 0
+        else:
+            index = idx
+        if index < 0:
+            index = len(arr) + index
+        s = arr[index]
         v = process_col(s) if col_arg == [] else process_col(s, col_arg)
-        if 'f' in mod:
+        if 'k' not in mod:
+            if 'f' in mod:
+                if v is None:
+                    print line.encode('utf8', 'ignore')
+                continue
             if v is None:
-                print line.encode('utf8', 'ignore')
-            continue
-        if v is None:
-            continue
+                continue
+        else:
+            if v is None:
+                v = ''
         if 'r' in mod:
-            arr[idx] = v
+            arr[index] = v
         elif 'i' in mod:
-            arr = arr[: idx + 1] + [v] + arr[idx + 1: ]
+            arr = arr[: index + 1] + [v] + arr[index + 1: ]
         elif 'a' in mod:
             arr.append(v)
+        elif 'b' in mod:
+            arr = arr[: index - 1] + [v] + arr[index - 1: ] if index != 0 else [v] + arr
         print '\t'.join(arr).encode('utf8', 'ignore')
 
 
@@ -169,8 +213,8 @@ def arg_2_func(string):
             log('notice', 'arg_2_func with no func. {0}'.format(arr))
             return None
         elif len(arr) == 1: # ____select_idx --> select_idx() 
-            log('notice', 'arg_2_func with no arg. {0}'.format(func))
             func = arr[0]
+            log('notice', 'arg_2_func with no arg. {0}'.format(func))
             output = eval(func)()
         elif arr[1] != '': # ____select_idx____0a____xx --> process_lines(select_idx, [0a, xx])
             func = arr[0] 

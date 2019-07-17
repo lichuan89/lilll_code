@@ -225,17 +225,6 @@ def sum_field(tags):
         print '\t'.join(arr).encode('utf8', 'ignore')
 
 
-def split_line(tags=['\t']):
-    sep = tags[0]
-    for line in sys.stdin:
-        if line[-1] == '\n':
-            line = line[: -1]
-        line = line.decode('utf8', 'ignore')
-        arr = re.split(sep, line) 
-        for v in arr:
-            print v.encode('utf8', 'ignore')  
-
-
 def save(tags):
     fpath = tags[0]
     if fpath.find('/') == -1:
@@ -1250,14 +1239,28 @@ def arg_2_func(string):
     # 将字符串转换为参数list
     arr = smart_str_list(string, use_end_ch=False)
     arr = [v.decode('utf8', 'ignore') for v in arr]
+    
+    sym_map = {
+        '<TAB>' : '\t',
+        '<SPACE>': ' ',
+        '<VERT>': '|',
+        '<UNDER>': '_',
+        '<2UNDER>': '__',
+    }
+    for i in range(len(arr)):
+        v = arr[i]
+        for sym, val in sym_map.items():
+            v = v.replace(sym, val)
+        arr[i] = v
+
     #try:
     if True:
         if arr == []:
             log('notice', 'arg_2_func with no func. {0}'.format(arr))
             return None
         elif len(arr) == 1: # ____select_idx --> select_idx() 
-            log('notice', 'arg_2_func with no arg. {0}'.format(func))
             func = arr[0]
+            log('notice', 'arg_2_func with no arg. {0}'.format(func))
             output = eval(func)()
         elif arr[1] != '': # ____select_idx____0a____xx --> process_lines(select_idx, [0a, xx])
             func = arr[0] 
@@ -1274,6 +1277,10 @@ def arg_2_func(string):
     return output
 
 
+
 if __name__ == "__main__":
+    # 格式为: 分隔符 函数名 分隔符 模式参数 分隔符 参数2 分隔符 参数3 ... 
+    # 模式参数: [num]raifp[str])
     func_arg = sys.argv[1]
+    func_arg = '____' + func_arg
     arg_2_func(func_arg)

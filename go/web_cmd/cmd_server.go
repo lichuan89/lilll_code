@@ -84,7 +84,7 @@ func GetGID() uint64 {
 
 func Str_2_file(content string, fileName string, is_append bool) {
     // https://blog.csdn.net/qq_34021712/article/details/86433918
-    mod := os.O_CREATE|os.O_RDWR
+    mod := os.O_CREATE|os.O_WRONLY|os.O_TRUNC
     if is_append {
         mod = os.O_CREATE|os.O_APPEND|os.O_RDWR
     }

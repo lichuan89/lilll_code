@@ -110,6 +110,25 @@ def file_2_str(fpath, decode=None):
             context = context.decode(decode, 'ignore')
         return context
 
+def file_2_dict(fpath, sep='\t', decode=None):
+    """
+    从文件读取字符串
+    """
+    h = {}
+    with open(fpath, 'rb') as f:
+        for line in f.readlines():
+            if line[-1] == '\n':
+                line = line[: -1]
+            if decode is not None:
+                line = line.decode(decode, 'ignore')
+            arr = line.split(sep)
+            if arr == []:
+                continue
+            elif len(arr) < 2:
+                arr.append('')
+            h[arr[0]] = sep.join(arr[1: ])
+    return h
+
 def str_2_file(string, fpath, encode=None):
     """
     将字符串写入文件
@@ -395,7 +414,115 @@ def md5(input):
     data = struct.unpack("IIII", str)
     md5value = data[0] << 96 | data[1] << 64 | data[2] << 32 | data[3] 
     return md5value
+
+def find_begin_reduplication(string):
+    if string == '':
+        return ''
+
+    word = string[0]
+    for i in range(1, len(string)):
+        if string[i] == string[0]:
+            word = string[: i + 1]
+        else:
+            break
+    return word
+
+
+def smart_str_list(string, use_end_ch=False):
+    """
+    格式为 sep1 
+                sep2 v1
+                sep2 v2
+                spe2 v3 
+                sep2 ... 
+            sep1
+    """
+    if use_end_ch:
+        end_ch = find_begin_reduplication(string)
+        string = string[len(end_ch):]
+        end = string.find(end_ch)
+        string = string[: end]
+    if string == '':
+        return []
+    sep = find_begin_reduplication(string)
+    arr = string.split(sep)
+    return arr[1: ]
+
+def smart_str_dict(string, use_end_ch=False, use_order=False):
+    """
+    格式为 sep1
+                sep2
+                    k1 sep3 v11 spe3 v12
+                sep2
+                sep2
+                    k2 sep3 v21
+                sep2
+            sep1
+                
+    """
+    if use_end_ch:
+        end_ch = find_begin_reduplication(string)
+        string = string[len(end_ch):]
+        end = string.find(end_ch)
+        string = string[: end]
+    if string == '':
+        return {}
+    sep_ch = find_begin_reduplication(string)
+    end = string.find(sep_ch)
+    string = string[len(sep_ch): ]
+    if string == '':
+        return {}
+    inner_sep_ch = find_begin_reduplication(string)
+    end = string.find(inner_sep_ch)
+    string = string[len(inner_sep_ch): ]
+    arr = string.split(sep_ch)
+    kvs = []
+    for item in arr:
+        kv = item.split(inner_sep_ch)
+        k = kv[0]
+        v = kv[1: ]
+        if len(v) <= 1:
+            v = ''.join(v)
+        kvs.append([k, v])
+    if use_order:
+        return kvs
+    else:
+        return dict(kvs)
+
+
+def json_2_kvs(obj, keys):
+    output = {}
+    if type(obj) == dict:
+        for k, v in obj.items():
+            if k in keys:
+               output[k] = v if type(v) is not list and type(v) is not dict else json_2_str(v)
+            else:
+                o = json_2_kvs(v, keys)
+                for i in o:
+                    output[i] = o[i]
+    elif type(obj) == list:
+        for v in obj:
+            o = json_2_kvs(v, keys) 
+            for i in o:
+                output[i] = o[i]
+    return output
+
+ 
+def test_val():
+    print find_begin_reduplication("##12iii#####") == "##" 
+    print find_begin_reduplication("a##12iii#####") == "a" 
+    print smart_str_list("##|a|b|c##", True) == ['a', 'b', 'c']
+    print smart_str_list("#||a||b||c#", True) == ['a', 'b', 'c']
+    print smart_str_list("||a||b||c", False) == ['a', 'b', 'c']
+    print smart_str_dict("##;:a:b;c:d:e;f##", use_end_ch=True, use_order=False) == {'a': 'b', 'c': ['d', 'e'], 'f': ''}
+    print smart_str_dict("##;:a:b;c:d:e;f##", use_end_ch=True, use_order=True) == [['a', 'b'], ['c', ['d', 'e']], ['f', '']]
+    print json_2_kvs({"a":["b", "c"], "d": 123}, ["a"]) == {'a': '["b", "c"]'}
+    print json_2_kvs({"a":["b", "c"], "d": 123}, ["a", "d"]) == {'a': '["b", "c"]', 'd': 123} 
+    print file_2_dict('lcommon.py', sep=' ')
+
 def test(opt):
+    test_val()
+    return
     if opt == "file_opt" or opt == "all":
         clear_dir('tmp.muti_process')
         str_2_file('abcd\nefg', 'tmp.muti_process/1')
@@ -471,6 +598,8 @@ def test(opt):
     if opt == 'crawl' or opt == 'all':
         ret = crawl('http://fxhh.jd.com/detail.html?id=173238717')
         print ret
+
+
 if __name__ == "__main__":
     opt = "all"
     test(opt)
