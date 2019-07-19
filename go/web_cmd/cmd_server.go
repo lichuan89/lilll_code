@@ -285,14 +285,14 @@ func parse_cmd(cmd string, log_fpath string) string {
     tmp_arr := []string {}
     cmd_map := File_2_dict("cmd_map.list")
     for _, cmd := range(arr){
-        split_cmd := strings.Split(cmd, "____")
+        split_cmd := strings.Split(cmd, "__")
         split_cmd_key := split_cmd[0]
         v, ok := cmd_map[split_cmd_key]
         if ok {
             subs := strings.Split(v, "|")
             if len(subs) > 0{
                 split_cmd[0] = subs[len(subs) - 1]
-                subs[len(subs) - 1] = strings.Join(split_cmd, "____") 
+                subs[len(subs) - 1] = strings.Join(split_cmd, "__") 
             }
             for _, sub := range(subs) {
                 tmp_arr = append(tmp_arr, sub)
@@ -441,8 +441,8 @@ func CmdAjax(res http.ResponseWriter, req *http.Request) {
    
     script := "" 
     cmd = parse_cmd(cmd, log_fpath)
-    if strings.Index(cmd, "upload_") != -1 {
-        reg := regexp.MustCompile(`(upload____[^ '\|]+)`)
+    if strings.Index(cmd, "upload__") != -1 {
+        reg := regexp.MustCompile(`(upload__[^ '\|]+)`)
         tag := reg.FindAllString(cmd, -1)[0][10:]
         files := str_2_json(context)
         if tag == "" {

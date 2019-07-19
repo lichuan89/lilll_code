@@ -193,13 +193,13 @@ function getQueryVariable(variable){
     function OnButton(){
         function ajax_upload_files(data_str) {
             var input = document.getElementById("input_area").value;
-            var rule = new RegExp("upload____([^ \|]+|$)") 
+            var rule = new RegExp("upload__([^ \|]+|$)") 
             var cmd = rule.exec(input)[0];
             var response = ajax_request("/cmd_ajax", cmd + "\n" + data_str + '\n', show_output);
         }
         // 从html元素中获取请求内容
         var input = document.getElementById("input_area").value;
-        if (input.indexOf("upload____") != -1) {
+        if (input.indexOf("upload__") != -1) {
             $(".upload_input").click()
             $(".upload_input").change(function() {upload_files(ajax_upload_files);});
         } else {

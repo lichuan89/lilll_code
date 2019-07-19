@@ -27,7 +27,7 @@ from lcommon import unexpand_json
 from lcommon import file_2_str 
 from lcommon import smart_str_list
 from lprocess_line import *
-
+import lprocess_line
 
 
 def history(tags=['100']):
@@ -102,67 +102,6 @@ def shuffle():
     random.shuffle(lines)
     for line in lines:
         print line
-
-
-def expand_json_pair(tags):
-    """
-    将{"key": key, "val": val}转换为{key: val}
-    """
-    idx = int(tags[0]) 
-    keys = tags[1].split('^')
-    vals = tags[2].split('^') 
-    for line in sys.stdin:
-        if line[-1] == '\n':
-            line = line[:-1]
-        line = line.decode('utf8', 'ignore')
-        arr = line.split('\t')
-        obj = str_2_json(arr[idx])
-        if obj is None:
-            continue
-        obj = expand_pair(obj, keys, vals)
-        arr[idx] = json_2_str(obj)
-        print '\t'.join(arr).encode('utf8', 'ignore')
-
-
-def parse_json(tags):
-    """
-    对第idx个字段解json, 先按(pair_key, pair_val)方式压缩,然后取字段keys替代原json所在字段
-    """
-    idx = int(tags[0]) # 对第idx个字段进行解析
-    keys = tags[1].split('^') if len(tags) > 1 else [] # 提取字段,字段名以^分割 
-    is_simple_key = (tags[2] == '1') if len(tags) > 2 else True 
-    use_regex = (tags[3] == '1') if len(tags) > 3 else True 
-    i = 0 
-    for line in sys.stdin:
-        if line[-1] == '\n':
-            line = line[:-1]
-        line = line.decode('utf8', 'ignore')
-        arr = line.split('\t')
-        obj = str_2_json(arr[idx])
-        if obj is None:
-            continue
-        kvs, kns = expand_json(obj, sep="___", is_simple_key=is_simple_key)
-        if keys != [] and keys != ['']:
-            vs = [kvs[k] if k in kvs else '' for k in keys]
-            vs = []
-            for k in keys:
-                if not use_regex:
-                    if k in kvs:
-                        vs.append(kvs[k])
-                    elif k in kns:
-                        vs.append(kns[k])
-                    else:
-                        vs.append('')
-                else:
-                    f = find_map(kvs, k)
-                    if f == {}:
-                        f = find_map(kns, k)
-                    vs.append('####'.join(f.values()))
-        else:
-            vs = ['###'.join(['###'.join(i) for i in kvs.items()])]
-        vs = [v.replace('\t', ' ').replace('\n', '\r') for v in vs]
-        output = arr[: idx] + vs + arr[idx + 1:]
-        print '\t'.join(output).encode('utf8', 'ignore')
 
 
 def expand_fields(tags):
@@ -278,7 +217,9 @@ def random_line_limit_num(num):
 def select_idx(tags):
     idxs = [int(idx) for idx in tags]
     for line in sys.stdin:
-        line = line[:-1].decode('utf8')
+        if line[-1] == '\n':
+            line = line[:-1]
+        line = line.decode('utf8')
         arr = line.split('\t')
         output = [arr[idx] if idx < len(arr) else '' for idx in idxs]
         print '\t'.join(output).encode('utf8', 'ignore')
@@ -368,23 +309,6 @@ def add_empty_head(tags=[1]):
     for i in range(n):
         print '' 
     for line in sys.stdin:
-        line = line[:-1]
-        print line 
-
-def add_head(tags=[]):
-    line = '\t'.join(tags)
-    print line.encode('utf8', 'ignore')
-    for line in sys.stdin:
-        line = line[:-1]
-        print line 
-
-def del_head(tags):
-    n = int(tags[0]) 
-    i = 0 
-    for line in sys.stdin:
-        i += 1
-        if i <= n:
-            continue
         line = line[:-1]
         print line 
 
@@ -1253,24 +1177,22 @@ def arg_2_func(string):
             v = v.replace(sym, val)
         arr[i] = v
 
+    col_funcs = set(dir(lprocess_line))
     #try:
     if True:
         if arr == []:
             log('notice', 'arg_2_func with no func. {0}'.format(arr))
             return None
-        elif len(arr) == 1: # ____select_idx --> select_idx() 
-            func = arr[0]
-            log('notice', 'arg_2_func with no arg. {0}'.format(func))
-            output = eval(func)()
-        elif arr[1] != '': # ____select_idx____0a____xx --> process_lines(select_idx, [0a, xx])
-            func = arr[0] 
-            log('notice', 'arg_2_func with mod arg. {0} {1} {2}'.format('process_lines', func, arr[1: ]))
+
+        func = arr[0]
+        args = arr[1: ]
+        if func in col_funcs:
+            log('notice', 'arg_2_func with mod arg. {0} {1} {2}'.format('process_lines', func, args))
             output = process_lines(eval(func), arr[1:])
         else:
-            func = arr[0]
-            arg = arr[2: ] # ____select_idx________xx --> select_idx([xx]) 
-            log('notice', 'arg_2_func with no mod arg. {0} {1}'.format(func, arr[2: ]))
-            output = eval(func)(arg)
+            log('notice', 'arg_2_func with mod arg. {0} {1}'.format(func, args))
+            output = eval(func)(args)
+
     #except Exception as e: 
     #    print >> sys.stderr, "failed to process.", e, sys._getframe().f_lineno
     #    return None 
@@ -1282,5 +1204,5 @@ if __name__ == "__main__":
     # 格式为: 分隔符 函数名 分隔符 模式参数 分隔符 参数2 分隔符 参数3 ... 
     # 模式参数: [num]raifp[str])
     func_arg = sys.argv[1]
-    func_arg = '____' + func_arg
+    func_arg = '__' + func_arg
     arg_2_func(func_arg)
