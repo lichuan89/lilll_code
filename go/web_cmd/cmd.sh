@@ -1,34 +1,46 @@
 #!/bin/bash
 
 param="$1"
-cmd=`echo "$param" | awk -F"____" '{print $1}'`
-arg1=`echo "$param" | awk -F"____" '{print $2}'`
-arg2=`echo "$param" | awk -F"____" '{print $3}'`
+cmd=`echo "$param" | awk -F"__" '{print $1}'`
+arg1=`echo "$param" | awk -F"__" '{print $2}'`
+arg2=`echo "$param" | awk -F"__" '{print $3}'`
 
 args=""
 for i in "$@"; do
     if [[ $args == "" ]]; then
         args=$i
     else
-        args=$args"____"$i
+        args=$args"__"$i
     fi  
 done
 
 
-
+# for server
+if [[ $cmd == "hello" ]]; then
+    ## hello
+    ##   echo "Hello World".
+    echo "Hello World"
+    exit 0
+fi
 
 if [[ $cmd == "stop" ]]; then
-    ps aux| grep cmd_server | awk '{print $2;}' | xargs kill -9; nohup go run cmd_server.go  & 
+    ## stop 
+    ##   stop server.
+    ps aux| grep cmd_server | awk '{print $2;}' | xargs kill -9
     exit 0
 fi
 
 if [[ $cmd == "restart" ]]; then
+    ## restart
+    ##   restart server
     ps aux| grep cmd_server | awk '{print $2;}' | xargs kill -9; nohup go run cmd_server.go  & 
     exit 0
 fi
 
 if [[ $cmd == "clear" ]]; then
-    rm -r static/temp/* 
+    ## clear
+    ##   clear temp cache 
+    rm -r static/temp/*
     exit 0
 fi
 
@@ -44,16 +56,16 @@ if [[ $cmd == "image_save_show" ]]; then
 fi
 
 if [[ $cmd == "html_image_show" ]]; then
-    # #html_image_show____c____r____l
-    cnt=`echo "$args" | awk -F"____" '{print NF - 1;}'`
+    # #html_image_show__c__r__l
+    cnt=`echo "$args" | awk -F"__" '{print NF - 1;}'`
     ls static/temp/$arg1/ | awk -F"\t" -v fs="$args" '{
-            l=split(fs, arr, "____");
+            l=split(fs, arr, "__");
             s=arr[2]"/"$1;
             for (i=3;i<=l;i++){
                 s=s"\t"arr[i]"/"$1;
             } 
             print s;
-    }' | sh cmd.sh image_fmt____$cnt | python process_line.py html_table____T
+    }' | sh cmd.sh image_fmt__$cnt | python process_line.py html_table__T
     exit 0
 fi
 
@@ -82,7 +94,7 @@ if [[ $cmd == "image_fmt" ]]; then
 fi
 
 if [[ $cmd == "image_crawl" ]]; then
-    #echo -e "http://ms.bdimg.com/dsp-image/1756536684.jpg\ta\nhttp://ms.bdimg.com/dsp-image/571671431.jpg\ttest" | sh cmd.sh crawl____jd
+    #echo -e "http://ms.bdimg.com/dsp-image/1756536684.jpg\ta\nhttp://ms.bdimg.com/dsp-image/571671431.jpg\ttest" | sh cmd.sh crawl__jd
     # 输入: 图片url, ...
     # 输出: 图片url, 本地图片url, ...
     cd ../../python/image/
@@ -100,7 +112,7 @@ if [[ $cmd == "image_crawl" ]]; then
     exit 0
 fi
 
-    #sh cmd.sh simple_extract_skin____path5
+    #sh cmd.sh simple_extract_skin__path5
     # 输入: 本地图片url, ...
     # 输出: 本地产出图片url, 本地图片url, ... 
     cd ../../python/image/

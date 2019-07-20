@@ -31,7 +31,8 @@ import lprocess_line
 
 
 def history(tags=['100']):
-    n = int(tags[0])
+    ## show history cmds. cmd: history, history__50
+    n = int(tags[0]) if len(tags) > 0 else 30
     fpath = 'static/temp/cmd.history.txt'
     data = file_2_str(fpath)
     data = list(reversed(data.split('\n')))[: n + 1]
@@ -46,7 +47,7 @@ def history(tags=['100']):
         print  
 
 
-def help():
+def example(tags=[]):
     data_fpath = './static/example/example_data.txt' 
     data = file_2_str(data_fpath)
     print '1. 例子数据:\n%s\n%s' % (data_fpath, data)
@@ -54,54 +55,58 @@ def help():
     print '''2. 例子指令:
         shell指令\t:awk -F"\\t" '{if($8~/^[0-9.]+$/) {s+=$8;n+=1}}END{print "平均价格:"s/n;}'
         自定义sh指令\t#restart
-        选择列\tselect_idx____0____6____1____7
-        随机排序\tshuffle|:head -6
+        输入数据中加入指令\taddHead__r__cols<2UNDER>r<2UNDER>0<2UNDER>1|addHead__r__#!lcmd
+        选择列\tcols__r__0__1
+        随机排序\tshuffle
         纯文本表格\thtml_table
-        图文表格\tselect_idx____0____6____1____2____3____4____7|add_head____image____url____txt____txt|html_table____KT
-        图文卡片\tselect_idx____0____6____1____2____3____4____7|add_head____image____url____txt____txt|html_card____KT____4
-        曲线\t:head -4|select_idx____1____9____10____11____12____13____14____15|chart_curve
-        饼图\t:head -5|select_idx____1____9____10____11____12____13____14____15|del_head____1|add_head____sale____1____2____3____4____5____6____7|transpose|chart_pie
-        树图\tselect_idx____3____4____5|del_head____1|chart_tree____field
+        图文表格\tcols__r__0__6__1__2__3__4__7__-1|rowIdx__0b__序号|addHead__r__txt__image__url__txt__txt|html_table__KT__-1
+        图文卡片\tcols__r__0__6__1__2__3__4__7__-1|rowIdx__0b__序号|addHead__r__txt__image__url__txt__txt|html_card__KT__5__150__4
+        曲线\t:head -4|cols__r__1__9__10__11__12__13__14__15|chart_curve
+        饼图\t:head -5|cols__r__1__9__10__11__12__13__14__15|delHead__r__1|colIdx__r__sales|transpose|chart_pie
+        树图\tcols__r__3__4__5|chart_tree__field
         处理图像\tselect_idx____0____1|#image_crawl____c|select_idx____0____2|#image_light____l____-2____2.3____20|#image_ycrcb____y____-2|#image_skin____skin____-2|#image_sobel____s____-2|#image_expand____e____-2|#image_rotate____r____-2____60|#image_muzzy____m____-2|mirror|#image_fmt____10|add_head____id____name____ori____light____ycrcb____skin____sobel____expand____rorate____muzzy____muzzy_score|swap_row____0____1|html_table____KT
         上一次命令的输出作为输入\t|
         上上次命令的输出作为输入\t||
+        多进程选择列\tcols__rm__0__1
         运行管道命令\t$
 '''
 
-    print ''
-    print '3. py指令全集:'
+
+def help(tags=[]):
+
+    print "py指令集:"
     files = ['lprocess_line.py', 'process_line.py']
     for f in files:
         data = file_2_str(f)    
-        fs = re.findall('def ([a-zA-Z0-9_]+[(].*?[)])', data)
-        print '\t' + '\n\t'.join(fs) 
+        fs = re.findall('def ([a-zA-Z0-9_]+[(].*?[)]:[^:]+##[^\n]+)', data)
+        fs = ['\t' + i.replace('\n', '\t').strip() for i in fs]
+        print '\n\n'.join(fs) 
     
     print ''
-    print '4. sh指令全集:'
+    print 'sh指令集:'
     files = ['cmd.sh']
     for f in files:
         data = file_2_str(f)    
-        fs = re.findall('if [[][[] [$]cmd == "(.*?)" []][]]; then', data)
-        print '\t' + '\n\t'.join(fs) 
+        fs = re.findall('(##[^#]+?##[^\n]+)', data)
+        fs = ['\t' + i.replace('\n', '\t').strip() for i in fs]
+        print '\n\n'.join(fs) 
     
-    print ''
-    print '4. 图片处理指令:'
-    print '    xxxxxxxxxxxxxx'
 
-    print '5. 常用复杂命令:'
-    print '''
-        #image_ls____c|#image_muzzy____m____0|#image_sobel____s____-1|#image_otsu____o____0|mirror|#image_fmt____5|html_table____T 
-    '''
-
-def shuffle():
+def shuffle(tags=[]):
+    ## shuffle lines. cmd: shuffle, shuffle__4
+    n = int(tags[0]) if len(tags) > 0 else None
     lines = []
     for line in sys.stdin:
         if line[-1] == '\n':
             line = line[:-1]
         lines.append(line)
     random.shuffle(lines)
+    i = 0
     for line in lines:
         print line
+        i += 1
+        if n is not None and i >= n:
+            break
 
 
 def expand_fields(tags):
@@ -286,7 +291,7 @@ def select_field(tags):
         print '\t'.join(output).encode('utf8', 'ignore')
 
 
-def transpose():
+def transpose(tags=[]):
     arrs = [] 
     for line in sys.stdin:
         if line[-1] == '\n':
@@ -314,14 +319,22 @@ def add_empty_head(tags=[1]):
 
 
 def html_table(tags=['']):
+    ## show cols with table. cmd: html_table, html_table__K, html_table__T, html_table__KT, html_table__KT__2
     """
     第一行表示各列的类型,包括image/url/text,可以只填前n列，后面几列默认为text;
     第二行表示各列的列名,该行为空则不展示;
     剩余行为数据内容;
     参数: TK -> 第一行类型第二行字段名; T -> 第一行类型; K -> 第一行类型名
     """
-    tag = tags[0]
-    red_idx = int(tags[1]) if len(tags) > 1 else None 
+    tag = tags[0] if len(tags) > 0 else ''
+    red_idx = int(tags[1]) if len(tags) > 1 else None
+    colors = {
+        '1': 'pink',
+        '2': '#C0C0C0',
+        '3': '#00FFCC',
+        '4': '#CCCC66',
+        '5': '#9999CC',
+    } 
     print '''
         <link type="text/css" rel="styleSheet"  href="../../static/css/lvisual.css" />
         <script src="../../static/js/echarts-all.js"></script>
@@ -350,7 +363,8 @@ def html_table(tags=['']):
         if pre == "<th>" or len(arr) <= red_idx or (red_idx is None or arr[red_idx] == '0' or arr[red_idx] == '' or arr[red_idx] == '-'):
             tr = '<tr>'
         else:
-            pre = '<td style="background:#ffce9f;word-wrap:break-word; white-space:normal; word-break:break-all;">'
+            color = colors[arr[red_idx]] if arr[red_idx] in colors else '#ffce9f'
+            pre = '<td style="background:%s;word-wrap:break-word; white-space:normal; word-break:break-all;">' % color
             tr = '<tr style="border:solid red">' 
         for j in range(len(arr)):
             v = arr[j]
@@ -369,6 +383,7 @@ def html_table(tags=['']):
     
 
 def html_card(tags=['TK', 5, 150, 0, 0]):
+    ## show cols with cards. cmd:html_card, html_card__KT__5__150__4__1
     """
     第一行表示各列的类型,包括image/url/text,可以只填前n列，后面几列默认为text;
     第二行表示各列的列名,该行为空则不展示;
@@ -376,7 +391,7 @@ def html_card(tags=['TK', 5, 150, 0, 0]):
     参数:
     每一行为一个元素，col_num个元素展现成一行,每个元素展现的宽度为col_width.每个元素的主key是第id_idx个字段, use_boder表示是否展现边框
     """
-    tag, col_num, col_width, id_idx, use_boder = 'TK', 5, 150, 1, 0
+    tag, col_num, col_width, id_idx, use_boder = '', 5, 150, 1, 0
     if len(tags) >= 1:
         tag = tags[0]
     if len(tags) >= 2:
@@ -444,7 +459,8 @@ def html_card(tags=['TK', 5, 150, 0, 0]):
     print '<hr><label id = "selecting_cell_label" style="width: 1000px; height: 100px;"></label>'
 
 
-def chart_curve():
+def chart_curve(tags=[]):
+    ## show data with curve chart. cmd: chart_curve
     lines = []
     for line in sys.stdin:
         line = line[:-1].decode('utf8')
@@ -894,7 +910,8 @@ def chart_scatter():
     print_chart_js()
 
 
-def chart_pie():
+def chart_pie(tags=[]):
+    ## show dta with pies. cmd: chart_pie
     lines = []
     for line in sys.stdin:
         if line[-1] == '\n':
@@ -1010,6 +1027,7 @@ def chart_pie():
 
 
 def chart_tree(tags=["json"]):
+    ## show data with tree. cmd: chart_tree__json, chart_tree__field
     # https://echarts.baidu.com/examples/editor.html?c=tree-basic&theme=light
     tag = tags[0] # json or field
 
@@ -1069,6 +1087,10 @@ def chart_tree(tags=["json"]):
         obj = str_2_json(s)
     def expand_val(obj):
         if type(obj) == list:
+            o = {}
+            #for i in range(len(obj)):
+            #    o['.list_' + unicode(i)] = expand_val(obj[i])
+            #obj = o
             obj = [expand_val(v) for v in obj]
         elif type(obj) == dict:
             for k, v in obj.items():
@@ -1170,6 +1192,7 @@ def arg_2_func(string):
         '<VERT>': '|',
         '<UNDER>': '_',
         '<2UNDER>': '__',
+        '<ENTER>': '\n',
     }
     for i in range(len(arr)):
         v = arr[i]
@@ -1188,7 +1211,7 @@ def arg_2_func(string):
         args = arr[1: ]
         if func in col_funcs:
             log('notice', 'arg_2_func with mod arg. {0} {1} {2}'.format('process_lines', func, args))
-            output = process_lines(eval(func), arr[1:])
+            output = quick_process_lines(eval(func), arr[1:])
         else:
             log('notice', 'arg_2_func with mod arg. {0} {1}'.format(func, args))
             output = eval(func)(args)

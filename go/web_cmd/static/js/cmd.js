@@ -52,13 +52,18 @@ function show_output(url, req_data, res_data) {
  
     var oDiv = document.getElementById("output_html");
     var arr = res_data.split("\n")
-    var input_url = arr[0]
-    var output_url = arr[1]
-    var log_url = arr[2]
-    var context = arr.slice(3).join("\n")
+    var output_cmd = arr[0]
+    var context = arr.slice(1).join("\n")
+
+    var sub_arr = output_cmd.split("\t");
+    var ori_cmd = sub_arr[0]
+    var input_url = sub_arr[1]
+    var output_url = sub_arr[2]
+    var log_url = sub_arr[3]
+    console.log("ori_cmd:" + ori_cmd + ", input_url:" + input_url + ", output_url:" + output_url + ", log_url:" + log_url);
 
     if (context.indexOf("#!lcmd") == 0) {
-        var context = arr.slice(4).join("\n")
+        var context = arr.slice(2).join("\n")
         document.getElementById("input_area").value = context;
         OnButton();
     }
@@ -68,7 +73,7 @@ function show_output(url, req_data, res_data) {
     html += '<a href="' + output_url + '" target="_blank">输出链接</a> | '
     html += '<a href="' + log_url + '" target="_blank">日志链接</a><br>'
     var cmd = req_data.split("\n")[0]
-    console.log('print chart. ', cmd, context)
+    console.log('print input and output. ', cmd, context)
     if (cmd.indexOf("chart_") != -1) {
         context = context.split("\n")[0];
         var option = JSON.parse(context);

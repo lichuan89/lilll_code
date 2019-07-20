@@ -327,7 +327,7 @@ func parse_cmd(cmd string, log_fpath string) string {
             s := fmt.Sprintf("%s 2> %s", v[1: ], log_fpath)
             cmds = append(cmds, s)
         } else if v[: 1] == "#" {
-            s := fmt.Sprintf("/bin/bash cmd.sh '%s' 2> %s", v[1: ], log_fpath)
+            s := fmt.Sprintf("/bin/bash -x cmd.sh '%s' 2> %s", v[1: ], log_fpath)
             cmds = append(cmds, s)
         } else {
             s := fmt.Sprintf("python process_line.py '%s' 2> %s", v, log_fpath)
@@ -480,7 +480,7 @@ func CmdAjax(res http.ResponseWriter, req *http.Request) {
     r, _ := exec_shell(script)
     fmt.Printf("run script. log:[%s]\n", r)
     ret := File_2_str(output_fpath, 4000)
-    fmt.Fprintf(res, "%s\n%s\n%s\n%s", input_url, output_url, log_url, ret)
+    fmt.Fprintf(res, "%s\t%s\t%s\t%s\n%s", ori_cmd, input_url, output_url, log_url, ret)
     //fmt.Printf("response output.cmd:[%s], sep:[%s], fpath:[%s], context:[%s], res:[%s], output_fpath:[%s]\n", cmd, sep, fpath, context, ret, output_url)
     fmt.Printf("response output.cmd:[%s], sep:[%s], fpath:[%s], res:[%s], output_fpath:[%s]\n", cmd, sep, fpath, ret, output_url)
     is_check := true 
