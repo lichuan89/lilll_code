@@ -8,7 +8,7 @@
 import os 
 import sys
 import multiprocessing
-from lcommon import str_2_file
+from lcommon import str_2_file, file_2_str
 from lcommon import read_dir
 from lcommon import clear_dir 
 
@@ -21,7 +21,8 @@ class Processor(multiprocessing.Process):
         multiprocessing.Process.__init__(self)
         self.worker = worker
         self.lines = lines
-        self.args = args[: -1]
+        self.args = args[: -2]
+        self.idx = args[-2]
         self.share = args[-1]
     
     def run(self):
@@ -29,11 +30,11 @@ class Processor(multiprocessing.Process):
         run 
         """
         result = self.worker(self.lines, self.args)
-        id = os.getpid()
+        #id = os.getpid()
         if type(self.share) == unicode or type(self.share) == type(''):
-            str_2_file('\n'.join(result).encode('utf8', 'ignore'), '%s/tmp.%s' % (self.share, id))
+            str_2_file('\n'.join(result).encode('utf8', 'ignore'), '%s/tmp.%s' % (self.share, self.idx))
         else:
-            self.share.setdefault(id, result)
+            self.share.setdefault(self.idx, result)
 
 
 def muti_process(lines, thread_running_num, worker, args, use_share_path=None): 
@@ -52,17 +53,19 @@ def muti_process(lines, thread_running_num, worker, args, use_share_path=None):
     batch_arr = {}
 
     # 为多进程分配输入数据
-    for i in range(len(lines)):
-        k = i % thread_running_num 
-        batch_arr.setdefault(k, [])
-        batch_arr[k].append(lines[i])
-    
+    n = len(lines) / thread_running_num
+    for i in range(thread_running_num):
+        if i < thread_running_num - 1:
+            batch = lines[i * thread_running_num: (i + 1) * thread_running_num]
+        else:
+            batch = lines[i * thread_running_num: ]
+        batch_arr[i] = batch
+
     for idx in batch_arr:
-        th = Processor(worker, batch_arr[idx], args + [contexts])
+        th = Processor(worker, batch_arr[idx], args + [idx, contexts])
         threadpool.append(th)
 
     # 执行多进程
-    idx = 0 
     threads = []
     for th in threadpool:
         th.start()
@@ -73,14 +76,27 @@ def muti_process(lines, thread_running_num, worker, args, use_share_path=None):
     # 合并结果数据
     lines = []
     if use_share_path is not None:
-        lines = read_dir(use_share_path)
-        clear_dir(use_share_path)
-    else: 
-        for k, v in contexts.items():
-            if v is None:
+        files = set(os.listdir(use_share_path))
+        for i in range(thread_running_num):
+            f = 'tmp.%d' % i
+            if f not in files:
                 continue
-            for line in v:
-                lines.append(line)
+            fpath = '%s/%s' % (use_share_path, f)
+            context = file_2_str(fpath).decode('utf8', 'ignore')
+            if context == '':
+                continue
+            lines.append(context)
+        clear_dir(use_share_path)
+    else:
+        for i in range(thread_running_num):
+            if i in contexts and contexts[i] is not None:
+                for line in contexts[i]:
+                    lines.append(line) 
+        #for k, v in contexts.items():
+        #    if v is None:
+        #        continue
+        #    for line in v:
+        #        lines.append(line)
     return lines
 
 
@@ -108,9 +124,10 @@ def muti_process_stdin(worker, args, batch_line_num, thread_running_num, use_sha
             print '\n'.join(output_lines).encode('utf8', 'ignore')
 
 def test():
-    def worker(lines, args): return ['%s:%d:%s' % (args[0], os.getpid(), line) for line in lines]
-    #muti_process_stdin(worker, ['prefix'], batch_line_num=30, thread_running_num=7, use_share_path='tmp.muti_process/')
-    muti_process_stdin(worker, ['prefix'], batch_line_num=30, thread_running_num=7, use_share_path=None)
+    #def worker(lines, args): return ['%s:%d:%s' % (args[0], os.getpid(), line) for line in lines]
+    def worker(lines, args): return lines 
+    muti_process_stdin(worker, ['prefix'], batch_line_num=30, thread_running_num=7, use_share_path='tmp.muti_process/')
+    #muti_process_stdin(worker, ['prefix'], batch_line_num=30, thread_running_num=7, use_share_path=None)
 
 
 if __name__ == "__main__":
