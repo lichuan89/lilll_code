@@ -188,6 +188,7 @@ def get_domains(url):
     arr = url.split("/")
     if len(arr) >= 3:
         url = arr[2].split('?')[0]
+        url = url.split(':')[0]
     regx = r'([^\.]+[.])?([^\.]+)(' + \
             '|'.join([h.replace('.', r'\.') for h in g_top_host_postfix]) + ')\\b'
     pattern = re.compile(regx, re.IGNORECASE)

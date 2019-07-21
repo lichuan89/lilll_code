@@ -480,7 +480,7 @@ func CmdAjax(res http.ResponseWriter, req *http.Request) {
     r, _ := exec_shell(script)
     fmt.Printf("run script. log:[%s]\n", r)
     ret := File_2_str(output_fpath, 4000)
-    fmt.Fprintf(res, "%s\t%s\t%s\t%s\n%s", ori_cmd, input_url, output_url, log_url, ret)
+    fmt.Fprintf(res, "%s\t%s\t%s\t%s\t%s\n%s", ori_cmd, strings.Replace(script, "\t", " ", -1), input_url, output_url, log_url, ret)
     //fmt.Printf("response output.cmd:[%s], sep:[%s], fpath:[%s], context:[%s], res:[%s], output_fpath:[%s]\n", cmd, sep, fpath, context, ret, output_url)
     fmt.Printf("response output.cmd:[%s], sep:[%s], fpath:[%s], res:[%s], output_fpath:[%s]\n", cmd, sep, fpath, ret, output_url)
     is_check := true 

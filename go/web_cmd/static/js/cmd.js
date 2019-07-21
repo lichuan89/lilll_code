@@ -57,10 +57,11 @@ function show_output(url, req_data, res_data) {
 
     var sub_arr = output_cmd.split("\t");
     var ori_cmd = sub_arr[0]
-    var input_url = sub_arr[1]
-    var output_url = sub_arr[2]
-    var log_url = sub_arr[3]
-    console.log("ori_cmd:" + ori_cmd + ", input_url:" + input_url + ", output_url:" + output_url + ", log_url:" + log_url);
+    var last_cmd = sub_arr[1]
+    var input_url = sub_arr[2]
+    var output_url = sub_arr[3]
+    var log_url = sub_arr[4]
+    console.log("ori_cmd:" + ori_cmd + ", last_cmd:" + last_cmd + ", input_url:" + input_url + ", output_url:" + output_url + ", log_url:" + log_url);
 
     if (context.indexOf("#!lcmd") == 0) {
         var context = arr.slice(2).join("\n")
@@ -74,7 +75,7 @@ function show_output(url, req_data, res_data) {
     html += '<a href="' + log_url + '" target="_blank">日志链接</a><br>'
     var cmd = req_data.split("\n")[0]
     console.log('print input and output. ', cmd, context)
-    if (cmd.indexOf("chart_") != -1) {
+    if (last_cmd.indexOf("chart_") != -1) {
         context = context.split("\n")[0];
         var option = JSON.parse(context);
         var domid = "output_html";
@@ -92,7 +93,7 @@ function show_output(url, req_data, res_data) {
         console.log("it will show chart:", option);
         myChart.setOption(option);
     } else {
-        if (cmd.indexOf("html_") == -1) { 
+        if (last_cmd.indexOf("html_") == -1) { 
             //context = context.replace(/\n/g, "<br>")
             context = "<pre>" + context + "</pre>" 
         }

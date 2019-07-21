@@ -27,6 +27,7 @@ from lcommon import unexpand_json
 from lcommon import file_2_str 
 from lcommon import smart_str_list
 from lprocess_line import *
+from limg_process_line import limg 
 import lprocess_line
 
 
@@ -69,6 +70,9 @@ def example(tags=[]):
         上上次命令的输出作为输入\t||
         多进程选择列\tcols__rm__0__1
         运行管道命令\t$
+        抓图像/网页放入文件夹\tcols__r__0__1|:grep http|curl__0i__path1__.bmp
+        处理图像(例如缩放图像)\tcols__r__0__1|:grep http|curl__0i__path1__.bmp|limg__1i__resize__path2__.bmp__300__100
+
 '''
 
 
@@ -82,6 +86,15 @@ def help(tags=[]):
         fs = ['\t' + i.replace('\n', '\t').strip() for i in fs]
         print '\n\n'.join(fs) 
     
+    print ''
+    print 'image指令集:'
+    files = ['limg_process_line.py']
+    for f in files:
+        data = file_2_str(f)    
+        fs = re.findall('def ([a-zA-Z0-9_]+[(].*?[)]:[^:]+##[^\n]+)', data)
+        fs = ['\t' + i.replace('\n', '\t').strip() for i in fs]
+        print '\n\n'.join(fs) 
+
     print ''
     print 'sh指令集:'
     files = ['cmd.sh']
@@ -1200,7 +1213,7 @@ def arg_2_func(string):
             v = v.replace(sym, val)
         arr[i] = v
 
-    col_funcs = set(dir(lprocess_line))
+    col_funcs = set(dir(lprocess_line) + ['limg'])
     #try:
     if True:
         if arr == []:
