@@ -6,21 +6,24 @@
     @note   实现python多进程处理输入流的函数
 """
 
+import sys
 import traceback
 import base64
 import re
-import sys
+import os
 import random 
 import time
 import datetime
 import urllib
 from lcommon import str_2_json
 from lcommon import json_2_str
+from lcommon import str_2_file 
 from lcommon import smart_str_list 
 from lcommon import expand_pair 
 from lcommon import json_2_kvs 
 from lcommon import log 
 from lcommon import crawl 
+from lcommon import md5 
 from lcommon import get_domains 
 
 g_rule = {
@@ -201,8 +204,32 @@ def html(us, tags=['utf8']):
     decode = tags[0] if len(tags) > 0 else 'utf8'
     url = us.encode('utf8', 'ignore')
     data = crawl(url, decode)
+    if data is None:
+        data = ''
     data = data.replace('\n', '\r') if data is not None else ''
     return data 
+
+def curl(us, tags=['tmp', '.bmp', None]):
+    ## crawl static html or image and save. cmd: curl__0i__path1__.bmp
+    path = tags[0] if len(tags) > 0 else 'tmp.crawl'
+    suffix = tags[1] if len(tags) > 1 else '.bmp' 
+    decode = tags[2] if len(tags) > 2 else None
+    if path.find('/') == -1:
+        path = './static/temp/%s/' % path
+    url = us
+    sign = md5(url)
+    fpath = '%s/%s%s' % (path, sign, suffix)
+    data = crawl(url, decode)
+    if data is None:
+        return None
+    try:
+        if not os.path.exists(path):
+            os.makedirs(path)
+    except IOError as error:
+        print >> sys.stderr, error 
+        return None 
+    str_2_file(data, fpath)
+    return fpath
 
 def rowIdx(us, tags=['']):
     ## add index for echo row. cmd: rowIdx__0b__0 
@@ -251,7 +278,7 @@ def process_lines(process_col, arr, lines):
     log('notice', 'process_lines. idx:{0}, mod:{1}, col_arg:{2}'.format(idx, mod, col_arg))
     output = []
     for line in lines:
-        if line[-1] == '\n':
+        if line != '' and line[-1] == '\n':
             line = line[:-1]
         #line = line.decode('utf8', 'ignore')
         arr = line.split('\t')
@@ -318,6 +345,11 @@ def quick_process_lines(process_col, arr):
         outputs = process_lines(process_col, arr, inputs)
         for line in outputs:
             print line.encode('utf8', 'ignore')
+
+
+def test():
+    us = 'https://ss0.baidu.com/6ONWsjip0QIZ8tyhnq/it/u=2700800805,3900905193&fm=58&w=150&h=150&img.JPEG'
+    curl(us, tags=['./tmp', '.bmp', None])
 
 
 if __name__ == "__main__":

@@ -360,14 +360,15 @@ def find_map(obj, reg):
             output[k] = obj[k]
     return output
 
-def crawl(url, decode=None, post_data='', header_map={}, is_encode_post_data=True):
+def crawl(url, decode=None, post_data=None, header_map={}, is_encode_post_data=True):
     """
     抓取网页, 如果post_data为{}则用get方法抓取网页
-    """     
-    if is_encode_post_data:
-        post_data = urllib.urlencode(post_data)
-    else:
-        post_data = json.dumps(post_data)
+    """ 
+    if post_data is not None:    
+        if is_encode_post_data:
+            post_data = urllib.urlencode(post_data)
+        else:
+            post_data = json.dumps(post_data)
     try:
         headers = {
                 'User-Agent': 'Mozilla/5.0 (Windows; U; Windows NT 6.1;' + \
@@ -376,7 +377,7 @@ def crawl(url, decode=None, post_data='', header_map={}, is_encode_post_data=Tru
                 }
         for key in header_map:
             headers[key] = header_map[key]
-        if post_data == {}:
+        if post_data is None:
             req = urllib2.Request(url, headers=headers)
         else:
             req = urllib2.Request(url, data = post_data, headers=headers)

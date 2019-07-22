@@ -17,12 +17,12 @@ function select_cell(cur, showid){
     hit_num = yes_elems.length
     all_num = document.getElementsByClassName("selecting_cell_table")[0].getAttribute("value")
     str = "";
-    str += "hit_num:"  + hit_num + "<br>";
-    str += "all_num:" + all_num + "<br>";
-    str += "rate:" + hit_num / all_num + "<br>";
-    str += "hit:<br>" + arr.join("<br>");
+    str += "hit_num:"  + hit_num + "\n";
+    str += "all_num:" + all_num + "\n";
+    str += "rate:" + hit_num / all_num + "\n";
+    str += "hit:\n    " + arr.join("\n    ");
 
-    show_elem.innerHTML = str;
+    show_elem.innerHTML = '<pre>' + str + '</pre>';
 }
 
 function change(selectid, showid){

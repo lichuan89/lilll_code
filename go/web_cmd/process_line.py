@@ -6,10 +6,11 @@
     @note   实现python多进程处理输入流的函数
 """
 
+import sys
+sys.path.append("../../python/common/")
 import traceback
 import base64
 import re
-import sys
 import time
 import datetime
 import random
@@ -79,7 +80,7 @@ def example(tags=[]):
 def help(tags=[]):
 
     print "py指令集:"
-    files = ['lprocess_line.py', 'process_line.py']
+    files = ['../../python/common/lprocess_line.py', 'process_line.py']
     for f in files:
         data = file_2_str(f)    
         fs = re.findall('def ([a-zA-Z0-9_]+[(].*?[)]:[^:]+##[^\n]+)', data)
@@ -104,6 +105,12 @@ def help(tags=[]):
         fs = ['\t' + i.replace('\n', '\t').strip() for i in fs]
         print '\n\n'.join(fs) 
     
+    print ''
+    print '简写指令集:'
+    f = 'cmd_map.list' 
+    data = file_2_str(f)
+    for s in data.split('\n'):
+        print '\t' + s
 
 def shuffle(tags=[]):
     ## shuffle lines. cmd: shuffle, shuffle__4
